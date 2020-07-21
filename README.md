@@ -1,5 +1,7 @@
 # Super Mario Bros
 
+![Alt text](screenshot.png?raw=true "Screenshot")
+
 ## Table of Contents
 
 - [About](#about)
