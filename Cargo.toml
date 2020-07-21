@@ -1,0 +1,12 @@
+[package]
+name = "super-mario-bros"
+version = "0.1.0"
+authors = ["Sugi <developer.sugiono@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+piston_window = "0.109.0"
+piston2d-sprite = "0.59.0"
+find_folder = "0.3.0"
