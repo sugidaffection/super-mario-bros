@@ -88,7 +88,11 @@ where
     self.physics.vel.y += self.physics.acc.y * dt;
     self.transform.pos.y += self.physics.vel.y * dt;
 
-    if self.physics.acc.x == 0.0 {
+    if !self.is_ground {
+      self.current_animation = "jump";
+    }
+
+    if self.physics.acc.x == 0.0 && self.is_ground {
       self.current_animation = "idle";
     }
 
@@ -149,7 +153,6 @@ where
 
   pub fn jump(&mut self, dt: f64) {
     if self.is_ground {
-      self.current_animation = "jump";
       self.is_ground = false;
       self.physics.acc.y -= 20.0 * dt;
     }
