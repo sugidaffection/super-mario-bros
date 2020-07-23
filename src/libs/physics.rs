@@ -15,23 +15,33 @@ impl Physics {
     Self {
       acc: Vector2 { x: 0.0, y: 0.0 },
       vel: Vector2 { x: 0.0, y: 0.0 },
-      max_vel: Vector2 { x: 0.0, y: 0.0 },
-      speed: 1.0,
-      friction: 0.1,
-      gravity: 0.7,
+      max_vel: Vector2 { x: 2.0, y: 15.0 },
+      speed: 0.0,
+      friction: 0.9,
+      gravity: 0.7
     }
   }
 
   pub fn accelerate(&mut self, dt: f64) {
     self.acc.x += self.speed * dt;
-    self.vel += self.acc * dt;
+    self.vel.x += self.acc.x * dt;
+  }
 
+  pub fn deccelerate(&mut self) {
+    self.vel.x *= self.friction;
+  }
+
+  pub fn limit_speed(&mut self) {
     if self.vel.x > self.max_vel.x {
-      self.vel = self.max_vel;
+      self.vel.x = self.max_vel.x;
     }
 
     if self.vel.x < -self.max_vel.x {
-      self.vel = -self.max_vel;
+      self.vel.x = -self.max_vel.x;
+    }
+
+    if self.vel.y > self.max_vel.y {
+      self.vel.y = self.max_vel.y;
     }
   }
 
