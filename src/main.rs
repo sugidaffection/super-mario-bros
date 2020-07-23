@@ -7,6 +7,14 @@ use cgmath::Vector2;
 mod player;
 use player::*;
 
+mod libs {
+    pub mod controller;
+    pub mod physics;
+    pub mod transform;
+}
+
+use libs::controller::Controller;
+
 fn main() {
     let mut window: PistonWindow = WindowSettings::new("Super Mario Bros", (640, 448))
         .exit_on_esc(true)
@@ -40,6 +48,7 @@ fn main() {
     let mut animations = vec![];
 
     let mut player = Player::new(window.size());
+    let mut controller = Controller::new();
 
     for x in (80..256).step_by(17) {
         let rect = [(x as f64) + 0.425, 34.45, 15.25, 15.25];
@@ -61,32 +70,16 @@ fn main() {
         });
 
         if let Some(u) = e.update_args() {
-            if !player.can_move {
-                map_pos.x -= player.get_vel_x() * u.dt * 10.0;
-            }
+            // if !player.can_move {
+            //     map_pos.x -= player.get_vel_x() * u.dt * 10.0;
+            // }
+            controller.update(&mut player, u.dt);
             player.update(u.dt * 10.0);
         }
 
-        if let Some(Button::Keyboard(key)) = e.press_args() {
-            match key {
-                Key::Right => {
-                    player.walk_right();
-                },
-                Key::Left => {
-                    player.walk_left();
-                },
-                Key::Space => {
-                    player.jump();
-                },
-                _ => {}
-            }
-        }
-
-        if let Some(Button::Keyboard(key)) = e.release_args() {
-            match key {
-                Key::Left => player.stop_left(),
-                Key::Right => player.stop_right(),
-                _ => {}
+        if let Some(args) = e.button_args() {
+            if let Button::Keyboard(key) = args.button {
+                controller.keyboard_event(key, args.state);
             }
         }
     }
