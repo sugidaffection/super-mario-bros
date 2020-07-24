@@ -4,7 +4,7 @@ use piston_window::{ImageSize, Size};
 use sprite::Sprite;
 use std::collections::HashMap;
 
-use crate::libs::{physics, transform};
+use crate::libs::{physics, transform, object};
 use physics::Physics;
 use transform::Transform;
 

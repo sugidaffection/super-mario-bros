@@ -44,5 +44,4 @@ impl Physics {
       self.vel.y = self.max_vel.y;
     }
   }
-
 }
