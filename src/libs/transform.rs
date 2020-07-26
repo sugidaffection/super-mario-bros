@@ -4,6 +4,7 @@ use piston_window::Size;
 pub struct Transform {
   pub pos: Vector2<f64>,
   pub size: Size,
+  pub scale: Vector2<f64>,
   pub rot: Vector2<f64>,
   pub flip_x: bool,
 }
@@ -11,30 +12,51 @@ pub struct Transform {
 impl Transform {
   pub fn new() -> Self {
     Self {
-      pos: Vector2 { x: 0.0, y: 0.0 },
+      pos: Vector2::from([0.0,0.0]),
       size: Size {
         width: 16.0,
         height: 16.0,
       },
-      rot: Vector2 { x: 0.0, y: 0.0 },
+      scale: Vector2::from([1.0,1.0]),
+      rot: Vector2::from([0.0,0.0]),
       flip_x: false,
     }
   }
 
-  pub fn get_right_side(&self) -> f64 {
-    self.pos.x + self.size.width
+  pub fn x(&self) -> f64 {
+    self.pos.x
   }
 
-  pub fn get_width(&self) -> f64 {
-    self.size.width
+  pub fn y(&self) -> f64 {
+    self.pos.y
   }
 
-  pub fn get_height(&self) -> f64 {
-    self.size.height
+  pub fn w(&self) -> f64 {
+    self.size.width * self.scale.x
   }
 
-  pub fn get_bottom_side(&mut self) -> f64 {
-    self.pos.y + self.size.width
+  pub fn h(&self) -> f64 {
+    self.size.height * self.scale.y
+  }
+
+  pub fn right(&self) -> f64 {
+    self.pos.x + self.w()
+  }
+
+  pub fn center_right(&self) -> f64 {
+    self.pos.x + self.w() / 2.0
+  }
+
+  pub fn bottom(&self) -> f64 {
+    self.pos.y + self.h()
+  }
+
+  pub fn center_bottom(&self) -> f64 {
+    self.pos.y + self.h() / 2.0
+  }
+
+  pub fn rect(&self) -> [f64;4] {
+    [self.x(), self.y(), self.w(), self.h()]
   }
 
 }

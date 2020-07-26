@@ -6,7 +6,8 @@ pub struct Physics {
   pub max_vel: Vector2<f64>,
   pub speed: f64,
   pub friction: f64,
-  pub gravity: f64
+  pub gravity: f64,
+  pub max_jump: f64
 }
 
 impl Physics {
@@ -15,10 +16,11 @@ impl Physics {
     Self {
       acc: Vector2 { x: 0.0, y: 0.0 },
       vel: Vector2 { x: 0.0, y: 0.0 },
-      max_vel: Vector2 { x: 2.0, y: 15.0 },
+      max_vel: Vector2 { x: 2.0, y: 5.0 },
       speed: 0.0,
       friction: 0.9,
-      gravity: 0.7
+      gravity: 0.7,
+      max_jump: 15.0
     }
   }
 
@@ -43,5 +45,10 @@ impl Physics {
     if self.vel.y > self.max_vel.y {
       self.vel.y = self.max_vel.y;
     }
+
+    if self.vel.y < -self.max_jump {
+      self.vel.y = -self.max_jump;
+    }
   }
+
 }
