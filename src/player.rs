@@ -1,14 +1,15 @@
+use cgmath::Vector2;
 use graphics::math::Matrix2d;
-use graphics::{Graphics, Transformed, rectangle};
+use graphics::{rectangle, Graphics, Transformed};
 use piston_window::{ImageSize, Size};
 use sprite::Sprite;
 use std::collections::HashMap;
-use cgmath::Vector2;
 
-use crate::libs::{physics, transform, object};
-use physics::Physics;
-use transform::Transform;
-use object::Object;
+use crate::libs::{
+  object::Object, 
+  physics::Physics, 
+  transform::Transform
+};
 
 #[derive(PartialEq)]
 pub enum PlayerDirection {
@@ -23,7 +24,7 @@ pub struct Player<I: ImageSize> {
   animation_loop: f64,
   transform: Transform,
   physics: Physics,
-  is_ground: bool
+  is_ground: bool,
 }
 
 impl<I> Player<I>
@@ -38,7 +39,7 @@ where
       animation_loop: 0.0,
       transform: Transform::new(),
       physics: Physics::new(),
-      is_ground: false
+      is_ground: false,
     }
   }
 
@@ -77,7 +78,7 @@ where
   }
 
   pub fn draw<B: Graphics<Texture = I>>(&self, t: Matrix2d, b: &mut B) {
-    rectangle([1.0,1.0,0.5,1.0], self.transform.rect(), t, b);
+    rectangle([1.0, 1.0, 0.5, 1.0], self.transform.rect(), t, b);
     match &self.sprite {
       Some(sprite) => sprite.draw(t.trans(self.transform.pos.x, self.transform.pos.y), b),
       None => {}
@@ -96,8 +97,8 @@ where
     self.physics.vel.y += self.physics.acc.y * dt;
     self.transform.pos.y += self.physics.vel.y * dt;
 
-    println!("vel {}", self.physics.vel.y);
-    println!("acc {}", self.physics.acc.y);
+    // println!("vel {}", self.physics.vel.y);
+    // println!("acc {}", self.physics.acc.y);
 
     if !self.is_ground {
       self.current_animation = "jump";
@@ -170,42 +171,48 @@ where
   }
 
   pub fn collide_with(&mut self, obj: &Object<I>) {
+    if self.transform.x() < obj.get_transform().right()
+      && self.transform.right() > obj.get_transform().x()
+      && self.transform.y() < obj.get_transform().bottom()
+      && self.transform.bottom() > obj.get_transform().y()
+    {
+      // Collide right side
+      if self.transform.right() > obj.get_transform().x()
+        && self.transform.center_right() < obj.get_transform().x()
+        && self.transform.center_bottom() > obj.get_transform().y()
+        && self.transform.center_bottom() < obj.get_transform().bottom()
+      {
+        self.transform.pos.x = obj.get_position().x - self.transform.w();
+      }
 
-    if self.transform.x() < obj.get_transform().right() &&
-      self.transform.right() > obj.get_transform().x() &&
-      self.transform.y() < obj.get_transform().bottom() &&
-      self.transform.bottom() > obj.get_transform().y() {
+      // collide left side
+      if self.transform.x() < obj.get_transform().right()
+        && self.transform.center_right() > obj.get_transform().right()
+        && self.transform.center_bottom() > obj.get_transform().y()
+        && self.transform.center_bottom() < obj.get_transform().bottom()
+      {
+        self.transform.pos.x = obj.get_transform().right();
+      }
 
+      // collide bottom side
+      if self.transform.bottom() > obj.get_transform().y()
+        && self.transform.center_bottom() < obj.get_transform().y()
+        && self.transform.center_right() > obj.get_transform().x()
+        && self.transform.center_right() < obj.get_transform().right()
+      {
+        self.transform.pos.y = obj.get_position().y - self.transform.h();
+        self.is_ground = true;
+      }
 
-        // Collide right side
-        if self.transform.right() > obj.get_transform().x() &&
-          self.transform.center_right() < obj.get_transform().x() {
-          self.transform.pos.x = obj.get_position().x - self.transform.w();
-          self.physics.vel.x *= -1.0;
-        }
-
-        // collide left side
-        if self.transform.x() < obj.get_transform().right() &&
-          self.transform.center_right() > obj.get_transform().right(){
-          self.transform.pos.x = obj.get_transform().right();
-          self.physics.vel.x *= -1.0;
-        }
-
-        // collide bottom side
-        if self.transform.bottom() > obj.get_transform().y() &&
-          self.transform.center_bottom() < obj.get_transform().y() {
-          self.transform.pos.y = obj.get_position().y - self.transform.h();
-          self.is_ground = true;
-        }
-
-        // collide top side
-        if self.transform.y() < obj.get_transform().bottom() &&
-          self.transform.center_bottom() > obj.get_transform().bottom() {
-          self.transform.pos.y = obj.get_transform().bottom();
-          self.is_ground = false;
-          self.physics.vel.y *= -1.0;
-        }
-
+      // collide top side
+      if self.transform.y() < obj.get_transform().bottom()
+        && self.transform.center_bottom() > obj.get_transform().bottom()
+        && self.transform.center_right() > obj.get_transform().x()
+        && self.transform.center_right() < obj.get_transform().right()
+      {
+        self.transform.pos.y = obj.get_transform().bottom();
+        self.is_ground = false;
+      }
     }
   }
 }
