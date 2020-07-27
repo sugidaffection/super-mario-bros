@@ -43,6 +43,7 @@ where
     }
   }
 
+
   pub fn set_scale(&mut self, x: f64, y: f64) {
     self.transform.scale.x = x;
     self.transform.scale.y = y;
@@ -183,6 +184,7 @@ where
         && self.transform.center_bottom() < obj.get_transform().bottom()
       {
         self.transform.pos.x = obj.get_position().x - self.transform.w();
+        self.physics.vel.x = 0.0;
       }
 
       // collide left side
@@ -192,6 +194,7 @@ where
         && self.transform.center_bottom() < obj.get_transform().bottom()
       {
         self.transform.pos.x = obj.get_transform().right();
+        self.physics.vel.x = 0.0;
       }
 
       // collide bottom side
@@ -201,6 +204,7 @@ where
         && self.transform.center_right() < obj.get_transform().right()
       {
         self.transform.pos.y = obj.get_position().y - self.transform.h();
+        self.physics.vel.y = 0.0;
         self.is_ground = true;
       }
 
@@ -211,6 +215,7 @@ where
         && self.transform.center_right() < obj.get_transform().right()
       {
         self.transform.pos.y = obj.get_transform().bottom();
+        self.physics.vel.y = 0.0;
         self.is_ground = false;
       }
     }

@@ -74,7 +74,7 @@ fn main() {
     player.push_animation("jump", animations[5]);
     player.append_animation("walk", animations[0..4].to_vec());
 
-    let mut map_pos = Vector2 { x: 0.0, y: 0.0 };
+    let mut map_pos = Vector2::from([0.0,0.0]);
 
     let grounds_pos = [[0.0, 1103.0], [1135.0, 240.0], [1423.0, 1024.0], [2479.0, 912.0]];
     let ground_y = map_height * map_scale - 52.0;
@@ -126,7 +126,7 @@ fn main() {
         brick.set_transparent(false);
         brick.set_border(true);
         brick.set_position((pos[0] + pos[1] + 32.0) * map_scale, ground_y - pos[2] * map_scale);
-        brick.set_size((pos[1]) * map_scale, pos[2] * map_scale);
+        brick.set_size(pos[1] * map_scale, pos[2] * map_scale);
         objects.push(brick);
 
         let mut brick = Object::new();
@@ -140,7 +140,28 @@ fn main() {
         brick.set_transparent(false);
         brick.set_border(true);
         brick.set_position((pos[0] + pos[1] + 272.0) * map_scale, ground_y - pos[2] * map_scale);
-        brick.set_size((pos[1]) * map_scale, pos[2] * map_scale);
+        brick.set_size(pos[1] * map_scale, pos[2] * map_scale);
+        objects.push(brick);
+
+    }
+
+    let bricks2_pos = [
+        [2896.0, 144.0, 16.0],
+        [2912.0, 128.0, 32.0],
+        [2928.0, 112.0, 48.0],
+        [2944.0, 96.0, 64.0],
+        [2960.0, 80.0, 80.0],
+        [2976.0, 64.0, 96.0],
+        [2992.0, 48.0, 112.0],
+        [3008.0, 32.0, 128.0],
+    ];
+
+    for pos in bricks2_pos.iter() {
+        let mut brick = Object::new();
+        brick.set_transparent(false);
+        brick.set_border(true);
+        brick.set_position(pos[0] * map_scale, ground_y - pos[2] * map_scale);
+        brick.set_size(pos[1] * map_scale + 16.0, pos[2] * map_scale);
         objects.push(brick);
     }
 
