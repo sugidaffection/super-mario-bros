@@ -7,6 +7,7 @@ use crate::libs::transform::Transform;
 
 pub struct Object<I: ImageSize> {
   color: [f32;4],
+  scale: [f64;2],
   border: bool,
   transparent: bool,
   solid: bool,
@@ -21,6 +22,7 @@ where I: ImageSize {
   pub fn new() -> Object<I> {
     Object {
       color: [1.0,1.0,1.0,1.0],
+      scale: [1.0, 1.0],
       border: false,
       transparent: true,
       solid: true,
@@ -28,6 +30,10 @@ where I: ImageSize {
       scene: None,
       sprite: None
     }
+  }
+
+  pub fn set_scale(&mut self, x: f64, y: f64) {
+    self.scale = [x,y];
   }
 
   pub fn set_transparent(&mut self, value: bool) {
@@ -101,10 +107,9 @@ where I: ImageSize {
     }
     match &self.sprite {
       Some(sprite) => {
-        let size = sprite.get_texture().get_size();
         sprite.draw(t
-          .trans(self.transform.pos.x, self.transform.pos.y)
-          .scale(self.transform.size.width / size.0 as f64, self.transform.size.height / size.1 as f64),
+          .trans(self.transform.center_right(), self.transform.center_bottom())
+          .scale(self.scale[0], self.scale[1]),
         b)
       },
       None => {}

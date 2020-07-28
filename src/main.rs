@@ -67,7 +67,7 @@ fn main() {
         animations.push(rect);
     }
     
-    let player_scale = map_height * map_scale / 16.0 / 16.0;
+    let player_scale = (16.0 / 15.25) * 2.0;
     player.set_scale(player_scale, player_scale);
     player.set_sprite(sprite);
     player.push_animation("idle", animations[0]);
@@ -89,6 +89,7 @@ fn main() {
         objects.push(ground);
     }
     
+    // [pos_x, width, height]
     let pipes_pos = [
         [447.0, 32.0, 32.0],
         [607.0, 32.0, 48.0],
@@ -107,6 +108,7 @@ fn main() {
         objects.push(pipe);
     }
 
+    // [pos_x, width, ground - y]
     let bricks_pos = [
         [2144.0, 64.0, 16.0],
         [2160.0, 48.0, 32.0],
@@ -145,6 +147,7 @@ fn main() {
 
     }
 
+    // [pos_x, width, ground - y]
     let bricks2_pos = [
         [2896.0, 144.0, 16.0],
         [2912.0, 128.0, 32.0],
@@ -165,12 +168,86 @@ fn main() {
         objects.push(brick);
     }
 
+    let tile_qm = [
+        [256.0, 16.0, 72.0],
+        [336.0, 16.0, 72.0],
+        [368.0, 16.0, 72.0],
+        [352.0, 16.0, 136.0],
+        [1248.0, 16.0, 72.0],
+        [1504.0, 16.0, 136.0],
+        [1696.0, 16.0, 72.0],
+        [1744.0, 16.0, 72.0],
+        [1744.0, 16.0, 136.0],
+        [1792.0, 16.0, 72.0],
+        [2064.0, 16.0, 136.0],
+        [2080.0, 16.0, 136.0],
+        [2720.0, 16.0, 72.0],
+    ];
+
+    let tile_b = [
+        [320.0, 16.0, 72.0],
+        [352.0, 16.0, 72.0],
+        [384.0, 16.0, 72.0],
+        [1232.0, 16.0, 72.0],
+        [1264.0, 16.0, 72.0],
+        [1280.0, 16.0, 136.0],
+        [1296.0, 16.0, 136.0],
+        [1312.0, 16.0, 136.0],
+        [1328.0, 16.0, 136.0],
+        [1344.0, 16.0, 136.0],
+        [1360.0, 16.0, 136.0],
+        [1376.0, 16.0, 136.0],
+        [1392.0, 16.0, 136.0],
+        [1424.0, 16.0, 136.0],
+        [1440.0, 16.0, 136.0],
+        [1456.0, 16.0, 136.0],
+        [1472.0, 16.0, 72.0],
+        [1568.0, 16.0, 72.0],
+        [1584.0, 16.0, 72.0],
+        [1852.0, 16.0, 72.0],
+        [1900.0, 16.0, 136.0],
+        [1916.0, 16.0, 136.0],
+        [1932.0, 16.0, 136.0],
+    ];
+
+    let tile_texture = Texture::from_path(
+        &mut window.create_texture_context(),
+        &assets.join("tileset.png"),
+        Flip::None,
+        &TextureSettings::new(),
+    ).unwrap();
+
+    let tile_rc = Rc::new(tile_texture);
+    let tile_scale = 2.0;
+    for pos in tile_qm.iter() {
+        let mut brick = Object::new();
+        brick.set_sprite(Sprite::from_texture_rect(tile_rc.clone(), [384.0, 0.0, 16.0, 16.0]));
+        brick.set_scale(tile_scale, tile_scale);
+        brick.set_transparent(true);
+        brick.set_position(pos[0] * tile_scale, ground_y - pos[2] * tile_scale);
+        brick.set_size(pos[1] * tile_scale, pos[1] * tile_scale);
+        objects.push(brick);
+    }
+
+    for pos in tile_b.iter() {
+        let mut brick = Object::new();
+        brick.set_sprite(Sprite::from_texture_rect(tile_rc.clone(), [16.0, 0.0, 16.0, 16.0]));
+        brick.set_scale(tile_scale, tile_scale);
+        brick.set_transparent(true);
+        brick.set_position(pos[0] * tile_scale, ground_y - pos[2] * tile_scale);
+        brick.set_size(pos[1] * tile_scale, pos[1] * tile_scale);
+        objects.push(brick);
+    }
+
     while let Some(e) = window.next() {
         window.draw_2d(&e, |c, g, _d| {
             clear([0.0, 0.0, 0.0, 0.5], g);
             map.draw(c.transform.trans(-map_pos.x, -map_pos.y), g);
             for object in objects.iter() {
-                object.draw(c.transform, g);
+                let obj = object.get_transform();
+                if obj.x() < window_size.width && obj.right() >= 0.0 {
+                    object.draw(c.transform, g);
+                }
             }
             player.draw(c.transform, g);
         });
