@@ -161,7 +161,7 @@ fn main() {
         brick.set_transparent(false);
         brick.set_border(true);
         brick.set_position(pos[0] * map_scale, ground_y - pos[2] * map_scale);
-        brick.set_size(pos[1] * map_scale + 16.0, pos[2] * map_scale);
+        brick.set_size(pos[1] * map_scale, pos[2] * map_scale);
         objects.push(brick);
     }
 
