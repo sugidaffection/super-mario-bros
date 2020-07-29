@@ -1199,6 +1199,8 @@ version = "0.1.0"
 dependencies = [
  "cgmath 0.17.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "find_folder 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gfx 0.18.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gfx_device_gl 0.16.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "piston2d-graphics 0.36.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "piston2d-sprite 0.60.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "piston_window 0.110.0 (registry+https://github.com/rust-lang/crates.io-index)",

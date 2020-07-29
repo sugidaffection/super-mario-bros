@@ -1,3 +1,4 @@
+use crate::SpriteManager;
 use cgmath::Vector2;
 use graphics::math::Matrix2d;
 use graphics::{rectangle, Graphics, Transformed};
@@ -5,11 +6,7 @@ use piston_window::{ImageSize, Size};
 use sprite::Sprite;
 use std::collections::HashMap;
 
-use crate::libs::{
-  object::Object, 
-  physics::Physics, 
-  transform::Transform
-};
+use crate::libs::{object::Object, physics::Physics, transform::Transform};
 
 #[derive(PartialEq)]
 pub enum PlayerDirection {
@@ -18,8 +15,8 @@ pub enum PlayerDirection {
 }
 
 pub struct Player<I: ImageSize> {
-  sprite: Option<Sprite<I>>,
-  animation: HashMap<&'static str, Vec<[f64; 4]>>,
+  sm: SpriteManager<I>,
+  animation: HashMap<&'static str, Vec<usize>>,
   current_animation: &'static str,
   animation_loop: f64,
   transform: Transform,
@@ -31,9 +28,9 @@ impl<I> Player<I>
 where
   I: ImageSize,
 {
-  pub fn new() -> Player<I> {
+  pub fn new(sm: SpriteManager<I>) -> Player<I> {
     Player {
-      sprite: Option::None,
+      sm: sm,
       animation: HashMap::default(),
       current_animation: "idle",
       animation_loop: 0.0,
@@ -42,7 +39,6 @@ where
       is_ground: false,
     }
   }
-
 
   pub fn set_scale(&mut self, x: f64, y: f64) {
     self.transform.scale.x = x;
@@ -58,11 +54,7 @@ where
     self.current_animation = "walk";
   }
 
-  pub fn set_sprite(&mut self, sprite: Sprite<I>) {
-    self.sprite = Option::Some(sprite);
-  }
-
-  pub fn append_animation(&mut self, name: &'static str, mut animation: Vec<[f64; 4]>) {
+  pub fn append_animation(&mut self, name: &'static str, mut animation: Vec<usize>) {
     if let Some(a) = self.animation.get_mut(&name) {
       a.append(&mut animation);
     } else {
@@ -70,7 +62,7 @@ where
     }
   }
 
-  pub fn push_animation(&mut self, name: &'static str, rect: [f64; 4]) {
+  pub fn push_animation(&mut self, name: &'static str, rect: usize) {
     if let Some(animation) = self.animation.get_mut(&name) {
       animation.push(rect);
     } else {
@@ -78,11 +70,13 @@ where
     }
   }
 
-  pub fn draw<B: Graphics<Texture = I>>(&self, t: Matrix2d, b: &mut B) {
-    rectangle([1.0, 1.0, 0.5, 1.0], self.transform.rect(), t, b);
-    match &self.sprite {
-      Some(sprite) => sprite.draw(t.trans(self.transform.pos.x, self.transform.pos.y), b),
-      None => {}
+  pub fn draw<B: Graphics<Texture = I>>(&mut self, t: Matrix2d, b: &mut B) {
+    if let Some(animation) = self.animation.get(self.current_animation) {
+      if let Some(idx) = animation.get(self.animation_loop as usize % animation.len()) {
+        if let Some(sprite) = self.sm.get_mut("mario_small_red", *idx) {
+          sprite.draw(t.trans(self.transform.pos.x, self.transform.pos.y), b)
+        }
+      }
     }
   }
 
@@ -98,9 +92,6 @@ where
     self.physics.vel.y += self.physics.acc.y * dt;
     self.transform.pos.y += self.physics.vel.y * dt;
 
-    // println!("vel {}", self.physics.vel.y);
-    // println!("acc {}", self.physics.acc.y);
-
     if !self.is_ground {
       self.current_animation = "jump";
     }
@@ -109,25 +100,17 @@ where
       self.current_animation = "idle";
     }
 
-    // println!("Acc {:?}", self.physics.acc);
-    // println!("Vel {:?}", self.physics.vel);
-
     self.physics.acc *= 0.0;
 
-    match &mut self.sprite {
-      Some(sprite) => {
-        if let Some(animation) = self.animation.get(self.current_animation) {
-          if let Some(rect) = animation.get(self.animation_loop as usize % animation.len()) {
-            sprite.set_src_rect(*rect);
-            sprite.set_position(self.transform.size.width, self.transform.size.height);
-            sprite.set_scale(self.transform.scale.x, self.transform.scale.y);
-            sprite.set_flip_x(self.transform.flip_x);
-          }
+    if let Some(animation) = self.animation.get(self.current_animation) {
+      if let Some(idx) = animation.get(self.animation_loop as usize % animation.len()) {
+        if let Some(sprite) = self.sm.get_mut("mario_small_red", *idx) {
+          sprite.set_flip_x(self.transform.flip_x);
         }
       }
-      None => {}
     }
   }
+
   pub fn set_inside_window(&mut self, size: Size) {
     if self.transform.pos.x < 0.0 {
       self.transform.pos.x = 0.0;

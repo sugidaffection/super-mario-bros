@@ -38,11 +38,6 @@ where I: ImageSize {
 
   pub fn set_transparent(&mut self, value: bool) {
     self.transparent = value;
-    if value {
-      self.color = [1.0,1.0,1.0,0.0];
-    }else {
-      self.color = [1.0,1.0,1.0,1.0];
-    }
   }
 
   pub fn set_border(&mut self, value: bool) {
@@ -99,12 +94,14 @@ where I: ImageSize {
   }
 
   pub fn draw<B: Graphics<Texture = I>>(&self, t: Matrix2d, b: &mut B) {
-    let bordered_rectangle = Rectangle::new_border(self.color, 1.0);
-    if self.border {
-      bordered_rectangle.draw(self.transform.rect(), &DrawState::default(), t, b);
-    }else {
-      rectangle(self.color, self.transform.rect(), t, b);
+    if !self.transparent {
+      if self.border {
+        Rectangle::new_border(self.color, 1.0).draw(self.transform.rect(), &DrawState::default(), t, b);
+      }else {
+        rectangle(self.color, self.transform.rect(), t, b);
+      }
     }
+  
     match &self.sprite {
       Some(sprite) => {
         sprite.draw(t
