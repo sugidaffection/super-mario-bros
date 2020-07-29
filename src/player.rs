@@ -1,9 +1,8 @@
 use crate::SpriteManager;
 use cgmath::Vector2;
 use graphics::math::Matrix2d;
-use graphics::{rectangle, Graphics, Transformed};
+use graphics::{Graphics, Transformed};
 use piston_window::{ImageSize, Size};
-use sprite::Sprite;
 use std::collections::HashMap;
 
 use crate::libs::{object::Object, physics::Physics, transform::Transform};

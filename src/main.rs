@@ -60,9 +60,9 @@ where
         }
     }
 
-    fn get(&self, name: &'static str, index: usize) -> Option<&Sprite<I>> {
-        self.sprites.get(name).map(|x| &x[index])
-    }
+    // fn get(&self, name: &'static str, index: usize) -> Option<&Sprite<I>> {
+    //     self.sprites.get(name).map(|x| &x[index])
+    // }
 
     fn get_mut(&mut self, name: &'static str, index: usize) -> Option<&mut Sprite<I>> {
         self.sprites.get_mut(name).map(|x| &mut x[index])
@@ -76,7 +76,7 @@ where
 fn main() {
     let window_size: Size = Size::from([640, 480]);
 
-    let mut window: PistonWindow = WindowSettings::new("Super Mario Bros", window_size)
+    let mut window: PistonWindow = WindowSettings::new("Super Goomba Bros", window_size)
         .exit_on_esc(true)
         .build()
         .unwrap_or_else(|e| panic!("Failed to build PistonWindow: {}", e));
@@ -142,11 +142,11 @@ fn main() {
         player_rc,
         animations
         .to_vec(),
-        [2.0, 2.0],
+        [map_scale, map_scale],
     );
 
     let mut player = Player::new(player_sprites);
-    player.set_scale(2.0, 2.0);
+    player.set_scale(map_scale, map_scale);
     player.push_animation("idle", 0);
     player.push_animation("jump", 1);
     player.append_animation("walk", [0, 1].to_vec());
@@ -278,7 +278,7 @@ fn main() {
     .unwrap();
 
     let tile_rc = Rc::new(tile_texture);
-    let tile_scale = 2.0;
+    let tile_scale = map_scale;
     for pos in tile_qm.iter() {
         let mut brick = Object::new();
         brick.set_sprite(Sprite::from_texture_rect(
@@ -286,7 +286,6 @@ fn main() {
             [384.0, 0.0, 16.0, 16.0],
         ));
         brick.set_scale(tile_scale, tile_scale);
-        brick.set_transparent(true);
         brick.set_position(pos[0] * tile_scale, ground_y - pos[2] * tile_scale);
         brick.set_size(pos[1] * tile_scale, pos[1] * tile_scale);
         objects.push(brick);
