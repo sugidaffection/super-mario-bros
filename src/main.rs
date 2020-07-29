@@ -32,7 +32,7 @@ where
         }
     }
 
-    fn load(&mut self, name: &'static str, rc: Rc<I>, rect: [f64; 4], scale: [f64; 2]) {
+    fn load(&mut self, name: &'static str, rc: &Rc<I>, rect: [f64; 4], scale: [f64; 2]) {
         let mut sprite: Sprite<I> = Sprite::from_texture_rect(rc.clone(), rect);
         sprite.set_scale(scale[0], scale[0]);
         sprite.set_position(rect[2] * scale[0] / 2.0, rect[3] * scale[1] / 2.0);
@@ -45,18 +45,8 @@ where
     }
 
     fn loads(&mut self, name: &'static str, rc: Rc<I>, rects: Vec<[f64; 4]>, scale: [f64; 2]) {
-        let mut sprites: Vec<Sprite<I>> = Vec::default();
         for rect in rects {
-            let mut sprite: Sprite<I> = Sprite::from_texture_rect(rc.clone(), rect);
-            sprite.set_scale(scale[0], scale[0]);
-            sprite.set_position(rect[2] * scale[0] / 2.0, rect[3] * scale[1] / 2.0);
-            sprites.push(sprite);
-        }
-
-        if let Some(v) = self.sprites.get_mut(name) {
-            v.append(&mut sprites);
-        } else {
-            self.sprites.insert(name.to_owned(), sprites);
+            self.load(name, &rc, rect, scale);
         }
     }
 
@@ -101,7 +91,7 @@ fn main() {
     let map_rc = Rc::new(map_texture);
     sm.load(
         "map",
-        map_rc,
+        &map_rc,
         [0.0, 0.0, map_width, map_height],
         [map_scale, map_scale],
     );
