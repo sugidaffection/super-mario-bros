@@ -4,6 +4,8 @@ use piston_window::*;
 use sprite::*;
 use std::collections::HashMap;
 use std::rc::Rc;
+use serde_json::{from_reader, Value, Map};
+use std::fs::File;
 
 mod player;
 use player::*;
@@ -146,126 +148,22 @@ fn main() {
     let mut map_pos = Vector2::from([0.0, 0.0]);
     let mut objects = Vec::new();
 
-    let ground_pos = [
-        [0.0, 200.0, 1104.0, 24.0],
-        [1136.0, 200.0, 240.0, 24.0],
-        [1424.0, 200.0, 1024.0, 24.0],
-        [2480.0, 200.0, 912.0, 24.0]
-    ];
+    let json_objects:Value = from_reader(File::open(assets.join("map.json")).unwrap()).unwrap();
+    let grounds: &Vec<Value> = json_objects.as_object().unwrap().get("ground").unwrap().as_array().unwrap();
+    let pipes: &Vec<Value> = json_objects.as_object().unwrap().get("pipe").unwrap().as_array().unwrap();
+    let bricks: &Vec<Value> = json_objects.as_object().unwrap().get("brick").unwrap().as_array().unwrap();
+    let tile1: &Map<String, Value> = json_objects.as_object().unwrap().get("tile1").unwrap().as_object().unwrap();
+    let tile2: &Map<String, Value> = json_objects.as_object().unwrap().get("tile2").unwrap().as_object().unwrap();
 
-    for pos in ground_pos.iter() {
+    for obj in grounds.iter()
+        .chain(pipes.iter())
+        .chain(bricks.iter()) {
+
         let mut ground = Object::new();
-        ground.set_position(pos[0] * map_scale, pos[1] * map_scale);
-        ground.set_size(pos[2] * map_scale, pos[3] * map_scale);
+        ground.set_position(obj["x"].as_f64().unwrap() * map_scale, obj["y"].as_f64().unwrap() * map_scale);
+        ground.set_size(obj["width"].as_f64().unwrap() * map_scale, obj["height"].as_f64().unwrap() * map_scale);
         objects.push(ground);
     }
-
-    let pipe_pos = [
-        [448.0, 168.0, 32.0, 32.0],
-        [608.0, 152.0, 32.0, 48.0],
-        [736.0, 136.0, 32.0, 64.0],
-        [912.0, 136.0, 32.0, 64.0],
-        [2608.0, 168.0, 32.0, 32.0],
-        [2864.0, 168.0, 32.0, 32.0]
-    ];
-
-    for pos in pipe_pos.iter() {
-        let mut pipe = Object::new();
-        pipe.set_position(pos[0] * map_scale, pos[1] * map_scale);
-        pipe.set_size(pos[2] * map_scale, pos[3] * map_scale);
-        objects.push(pipe);
-    }
-
-    let brick_pos = [
-        [2144.0, 184.0, 64.0, 16.0],
-        [2160.0, 168.0, 48.0, 16.0],
-        [2176.0, 152.0, 32.0, 16.0],
-        [2192.0, 136.0, 16.0, 16.0],
-
-        [2240.0, 136.0, 16.0, 16.0],
-        [2240.0, 152.0, 32.0, 16.0],
-        [2240.0, 168.0, 48.0, 16.0],
-        [2240.0, 184.0, 64.0, 16.0],
-
-        [2368.0, 184.0, 80.0, 16.0],
-        [2384.0, 168.0, 64.0, 16.0],
-        [2400.0, 152.0, 48.0, 16.0],
-        [2416.0, 136.0, 32.0, 16.0],
-
-        [2480.0, 136.0, 16.0, 16.0],
-        [2480.0, 152.0, 32.0, 16.0],
-        [2480.0, 168.0, 48.0, 16.0],
-        [2480.0, 184.0, 64.0, 16.0],
-
-        [2896.0, 184.0, 144.0, 16.0],
-        [2912.0, 168.0, 128.0, 16.0],
-        [2928.0, 152.0, 112.0, 16.0],
-        [2944.0, 136.0, 96.0, 16.0],
-        [2960.0, 120.0, 80.0, 16.0],
-        [2976.0, 104.0, 64.0, 16.0],
-        [2992.0, 88.0, 48.0, 16.0],
-        [3008.0, 72.0, 32.0, 16.0],
-
-        [3168.0, 184.0, 16.0, 16.0]
-    ];
-
-
-    for pos in brick_pos.iter() {
-        let mut brick = Object::new();
-        brick.set_position(pos[0] * map_scale, pos[1] * map_scale);
-        brick.set_size(pos[2] * map_scale, pos[3] * map_scale);
-        objects.push(brick);
-    }
-
-    let tile_qm = [
-        [256.0, 136.0, 16.0, 16.0],
-        [336.0, 136.0, 16.0, 16.0],
-        [352.0, 72.0, 16.0, 16.0],
-        [368.0, 136.0, 16.0, 16.0],
-        [1248.0, 136.0, 16.0, 16.0],
-        [1504.0, 136.0, 16.0, 16.0],
-        [1696.0, 136.0, 16.0, 16.0],
-        [1744.0, 136.0, 16.0, 16.0],
-        [1744.0, 72.0, 16.0, 16.0],
-        [1792.0, 136.0, 16.0, 16.0],
-        [2064.0, 72.0, 16.0, 16.0],
-        [2080.0, 72.0, 16.0, 16.0],
-        [2720.0, 136.0, 16.0, 16.0],
-    ];
-
-    let tile_b = [
-        [320.0, 136.0, 16.0, 16.0],
-        [352.0, 136.0, 16.0, 16.0],
-        [384.0, 136.0, 16.0, 16.0],
-        [1232.0, 136.0, 16.0, 16.0],
-        [1264.0, 136.0, 16.0, 16.0],
-        [1280.0, 72.0, 16.0, 16.0],
-        [1296.0, 72.0, 16.0, 16.0],
-        [1312.0, 72.0, 16.0, 16.0],
-        [1328.0, 72.0, 16.0, 16.0],
-        [1344.0, 72.0, 16.0, 16.0],
-        [1360.0, 72.0, 16.0, 16.0],
-        [1376.0, 72.0, 16.0, 16.0],
-        [1392.0, 72.0, 16.0, 16.0],
-        [1456.0, 72.0, 16.0, 16.0],
-        [1472.0, 72.0, 16.0, 16.0],
-        [1488.0, 72.0, 16.0, 16.0],
-        [1504.0, 136.0, 16.0, 16.0],
-        [1600.0, 136.0, 16.0, 16.0],
-        [1616.0, 136.0, 16.0, 16.0],
-        [1888.0, 136.0, 16.0, 16.0],
-        [1936.0, 72.0, 16.0, 16.0],
-        [1936.0, 72.0, 16.0, 16.0],
-        [1952.0, 72.0, 16.0, 16.0],
-        [1968.0, 72.0, 16.0, 16.0],
-        [2048.0, 72.0, 16.0, 16.0],
-        [2096.0, 72.0, 16.0, 16.0],
-        [2064.0, 136.0, 16.0, 16.0],
-        [2080.0, 136.0, 16.0, 16.0],
-        [2688.0, 136.0, 16.0, 16.0],
-        [2704.0, 136.0, 16.0, 16.0],
-        [2736.0, 136.0, 16.0, 16.0],
-    ];
 
     let tile_texture = Texture::from_path(
         &mut window.create_texture_context(),
@@ -276,29 +174,45 @@ fn main() {
     .unwrap();
 
     let tile_rc = Rc::new(tile_texture);
-    let tile_scale = map_scale;
-    for pos in tile_qm.iter() {
-        let mut brick = Object::new();
-        brick.set_sprite(Sprite::from_texture_rect(
-            tile_rc.clone(),
-            [384.0, 0.0, 16.0, 16.0],
-        ));
-        brick.set_scale(tile_scale, tile_scale);
-        brick.set_position(pos[0] * tile_scale, pos[1] * tile_scale);
-        brick.set_size(pos[2] * tile_scale, pos[3] * tile_scale);
-        objects.push(brick);
-    }
 
-    for pos in tile_b.iter() {
-        let mut brick = Object::new();
-        brick.set_sprite(Sprite::from_texture_rect(
-            tile_rc.clone(),
-            [16.0, 0.0, 16.0, 16.0],
-        ));
-        brick.set_scale(tile_scale, tile_scale);
-        brick.set_position(pos[0] * tile_scale, pos[1] * tile_scale);
-        brick.set_size(pos[2] * tile_scale, pos[3] * tile_scale);
-        objects.push(brick);
+    for (i, obj) in tile1.get("positions").unwrap().as_array().unwrap().iter()
+        .chain(tile2.get("positions").unwrap().as_array().unwrap().iter()).enumerate() {
+
+        let s1 = tile1.get("sprite").unwrap().as_object().unwrap();
+        let s2 = tile2.get("sprite").unwrap().as_object().unwrap();
+
+        let mut ground = Object::new();
+        ground.set_scale(map_scale, map_scale);
+        ground.set_sprite(
+        if i < tile1.get("positions").unwrap().as_array().unwrap().len() { 
+            Sprite::from_texture_rect(tile_rc.clone(), [
+                s1.get("x").unwrap().as_f64().unwrap(), 
+                s1.get("y").unwrap().as_f64().unwrap(), 
+                s1.get("width").unwrap().as_f64().unwrap(), 
+                s1.get("height").unwrap().as_f64().unwrap()
+            ])
+        } else { 
+            Sprite::from_texture_rect(tile_rc.clone(), [
+                s2.get("x").unwrap().as_f64().unwrap(), 
+                s2.get("y").unwrap().as_f64().unwrap(), 
+                s2.get("width").unwrap().as_f64().unwrap(), 
+                s2.get("height").unwrap().as_f64().unwrap()
+            ])
+        });
+        ground.set_position(obj["x"].as_f64().unwrap() * map_scale, obj["y"].as_f64().unwrap() * map_scale);
+        ground.set_size(
+            if i < tile1.get("positions").unwrap().as_array().unwrap().len() { 
+                s1.get("width").unwrap().as_f64().unwrap()
+            } else { 
+                s2.get("width").unwrap().as_f64().unwrap()
+            } * map_scale, 
+            if i < tile1.get("positions").unwrap().as_array().unwrap().len() { 
+                s1.get("height").unwrap().as_f64().unwrap()
+            } else {
+                s2.get("height").unwrap().as_f64().unwrap()
+            } * map_scale);
+        objects.push(ground);
+
     }
 
     while let Some(e) = window.next() {
