@@ -1,11 +1,14 @@
 use crate::SpriteManager;
-use cgmath::Vector2;
 use graphics::math::Matrix2d;
 use graphics::{Graphics, Transformed};
 use piston_window::{ImageSize, Size};
 use std::collections::HashMap;
 
-use crate::libs::{object::Object, physics::Physics, transform::Transform};
+use crate::libs::{
+  object::{Object, Object2D}, 
+  physics::Physics, 
+  transform::{Transform, Trans, Rect}
+};
 
 #[derive(PartialEq)]
 pub enum PlayerDirection {
@@ -40,16 +43,15 @@ where
   }
 
   pub fn set_scale(&mut self, x: f64, y: f64) {
-    self.transform.scale.x = x;
-    self.transform.scale.y = y;
+    self.transform.set_scale(x, y);
   }
 
   pub fn set_dir(&mut self, dir: PlayerDirection) {
-    self.transform.flip_x = dir == PlayerDirection::Left;
+    self.transform.set_flip_x(dir == PlayerDirection::Left);
   }
 
   pub fn walk(&mut self) {
-    self.physics.speed = if self.transform.flip_x { -0.5 } else { 0.5 };
+    self.physics.speed = if self.transform.is_flip_x() { -0.5 } else { 0.5 };
     self.current_animation = "walk";
   }
 
@@ -73,7 +75,7 @@ where
     if let Some(animation) = self.animation.get(self.current_animation) {
       if let Some(idx) = animation.get(self.animation_loop as usize % animation.len()) {
         if let Some(sprite) = self.sm.get_mut("mario_small_red", *idx) {
-          sprite.draw(t.trans(self.transform.pos.x, self.transform.pos.y), b)
+          sprite.draw(t.trans(self.transform.get_position().x, self.transform.get_position().y), b)
         }
       }
     }
@@ -89,7 +91,7 @@ where
 
     self.physics.acc.y += self.physics.gravity * dt;
     self.physics.vel.y += self.physics.acc.y * dt;
-    self.transform.pos.y += self.physics.vel.y * dt;
+    self.transform.translate_y(self.physics.vel.y * dt);
 
     if !self.is_ground {
       self.current_animation = "jump";
@@ -104,42 +106,38 @@ where
     if let Some(animation) = self.animation.get(self.current_animation) {
       if let Some(idx) = animation.get(self.animation_loop as usize % animation.len()) {
         if let Some(sprite) = self.sm.get_mut("mario_small_red", *idx) {
-          sprite.set_flip_x(self.transform.flip_x);
+          sprite.set_flip_x(self.transform.is_flip_x());
         }
       }
     }
   }
 
   pub fn set_inside_window(&mut self, size: Size) {
-    if self.transform.pos.x < 0.0 {
-      self.transform.pos.x = 0.0;
+    if self.transform.x() < 0.0 {
+      self.transform.set_position_x(0.0);
       self.physics.acc.x = 0.0;
     }
 
-    if self.transform.right() > size.width {
-      self.transform.pos.x = size.width - self.transform.w();
+    if self.transform.xw() > size.width {
+      self.transform.set_position_x(size.width - self.transform.w());
       self.physics.acc.x = 0.0;
     }
   }
 
   pub fn update_position_x(&mut self, dt: f64) {
-    self.transform.pos.x += self.physics.vel.x * dt;
+    self.transform.translate_x(self.physics.vel.x * dt);
   }
 
   pub fn is_less_center(&self, window_size: Size) -> bool {
-    self.transform.right() < window_size.width / 2.0 - self.transform.w()
+    self.transform.xw() < window_size.width / 2.0 - self.transform.w()
   }
 
   pub fn dir_right(&self) -> bool {
-    !self.transform.flip_x
+    !self.transform.is_flip_x()
   }
 
   pub fn get_vel_x(&self) -> f64 {
     self.physics.vel.x
-  }
-
-  pub fn get_position(&self) -> Vector2<f64> {
-    self.transform.pos
   }
 
   pub fn jump(&mut self, dt: f64) {
@@ -154,49 +152,49 @@ where
   }
 
   pub fn collide_with(&mut self, obj: &Object<I>) {
-    if self.transform.x() < obj.get_transform().right()
-      && self.transform.right() > obj.get_transform().x()
-      && self.transform.y() < obj.get_transform().bottom()
-      && self.transform.bottom() > obj.get_transform().y()
+    if self.transform.x() < obj.get_transform().xw()
+      && self.transform.xw() > obj.get_transform().x()
+      && self.transform.y() < obj.get_transform().yh()
+      && self.transform.yh() > obj.get_transform().y()
     {
       // Collide right side
-      if self.transform.right() > obj.get_transform().x()
-        && self.transform.center_right() < obj.get_transform().x()
-        && self.transform.center_bottom() > obj.get_transform().y()
-        && self.transform.center_bottom() < obj.get_transform().bottom()
+      if self.transform.xw() > obj.get_transform().x()
+        && self.transform.center_xw() < obj.get_transform().x()
+        && self.transform.center_yh() > obj.get_transform().y()
+        && self.transform.center_yh() < obj.get_transform().yh()
       {
-        self.transform.pos.x = obj.get_position().x - self.transform.w();
+        self.transform.set_position_x(obj.get_position().x - self.transform.w());
         self.physics.vel.x = 0.0;
       }
 
       // collide left side
-      if self.transform.x() < obj.get_transform().right()
-        && self.transform.center_right() > obj.get_transform().right()
-        && self.transform.center_bottom() > obj.get_transform().y()
-        && self.transform.center_bottom() < obj.get_transform().bottom()
+      if self.transform.x() < obj.get_transform().xw()
+        && self.transform.center_xw() > obj.get_transform().xw()
+        && self.transform.center_yh() > obj.get_transform().y()
+        && self.transform.center_yh() < obj.get_transform().yh()
       {
-        self.transform.pos.x = obj.get_transform().right();
+        self.transform.set_position_x(obj.get_transform().xw());
         self.physics.vel.x = 0.0;
       }
 
       // collide bottom side
-      if self.transform.bottom() > obj.get_transform().y()
-        && self.transform.center_bottom() < obj.get_transform().y()
-        && self.transform.center_right() > obj.get_transform().x()
-        && self.transform.center_right() < obj.get_transform().right()
+      if self.transform.yh() > obj.get_transform().y()
+        && self.transform.center_yh() < obj.get_transform().y()
+        && self.transform.center_xw() > obj.get_transform().x()
+        && self.transform.center_xw() < obj.get_transform().xw()
       {
-        self.transform.pos.y = obj.get_position().y - self.transform.h();
+        self.transform.set_position_y(obj.get_position().y - self.transform.h());
         self.physics.vel.y = 0.0;
         self.is_ground = true;
       }
 
       // collide top side
-      if self.transform.y() < obj.get_transform().bottom()
-        && self.transform.center_bottom() > obj.get_transform().bottom()
-        && self.transform.center_right() > obj.get_transform().x()
-        && self.transform.center_right() < obj.get_transform().right()
+      if self.transform.y() < obj.get_transform().yh()
+        && self.transform.center_yh() > obj.get_transform().yh()
+        && self.transform.center_xw() > obj.get_transform().x()
+        && self.transform.center_xw() < obj.get_transform().xw()
       {
-        self.transform.pos.y = obj.get_transform().bottom();
+        self.transform.set_position_y(obj.get_transform().yh());
         self.physics.vel.y = 0.0;
         self.is_ground = false;
       }

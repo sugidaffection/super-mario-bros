@@ -18,7 +18,8 @@ mod libs {
 }
 
 use libs::controller::Controller;
-use libs::object::Object;
+use libs::object::{Object2D, Object};
+use libs::transform::{Trans, Rect};
 
 pub struct SpriteManager<I: ImageSize> {
     sprites: HashMap<String, Vec<Sprite<I>>>,
@@ -157,11 +158,12 @@ fn main() {
 
     for obj in grounds.iter()
         .chain(pipes.iter())
-        .chain(bricks.iter()) {
-
+        .chain(bricks.iter())
+     {
         let mut ground = Object::new();
+        ground.set_scale(map_scale, map_scale);
         ground.set_position(obj["x"].as_f64().unwrap() * map_scale, obj["y"].as_f64().unwrap() * map_scale);
-        ground.set_size(obj["width"].as_f64().unwrap() * map_scale, obj["height"].as_f64().unwrap() * map_scale);
+        ground.set_size(obj["width"].as_f64().unwrap(), obj["height"].as_f64().unwrap());
         objects.push(ground);
     }
 
@@ -180,37 +182,38 @@ fn main() {
 
         let s1 = tile1.get("sprite").unwrap().as_object().unwrap();
         let s2 = tile2.get("sprite").unwrap().as_object().unwrap();
+        let mut sprite = Sprite::from_texture_rect(tile_rc.clone(), [
+            s1.get("x").unwrap().as_f64().unwrap(), 
+            s1.get("y").unwrap().as_f64().unwrap(), 
+            s1.get("width").unwrap().as_f64().unwrap(), 
+            s1.get("height").unwrap().as_f64().unwrap()
+        ]);
 
-        let mut ground = Object::new();
-        ground.set_scale(map_scale, map_scale);
-        ground.set_sprite(
-        if i < tile1.get("positions").unwrap().as_array().unwrap().len() { 
-            Sprite::from_texture_rect(tile_rc.clone(), [
-                s1.get("x").unwrap().as_f64().unwrap(), 
-                s1.get("y").unwrap().as_f64().unwrap(), 
-                s1.get("width").unwrap().as_f64().unwrap(), 
-                s1.get("height").unwrap().as_f64().unwrap()
-            ])
-        } else { 
-            Sprite::from_texture_rect(tile_rc.clone(), [
+        if i >= tile1.get("positions").unwrap().as_array().unwrap().len() { 
+            sprite = Sprite::from_texture_rect(tile_rc.clone(), [
                 s2.get("x").unwrap().as_f64().unwrap(), 
                 s2.get("y").unwrap().as_f64().unwrap(), 
                 s2.get("width").unwrap().as_f64().unwrap(), 
                 s2.get("height").unwrap().as_f64().unwrap()
             ])
-        });
+        };
+
+        let mut ground = Object::new();
+        ground.set_scale(map_scale, map_scale);
+        ground.set_sprite(sprite);
         ground.set_position(obj["x"].as_f64().unwrap() * map_scale, obj["y"].as_f64().unwrap() * map_scale);
         ground.set_size(
             if i < tile1.get("positions").unwrap().as_array().unwrap().len() { 
                 s1.get("width").unwrap().as_f64().unwrap()
             } else { 
                 s2.get("width").unwrap().as_f64().unwrap()
-            } * map_scale, 
+            }, 
             if i < tile1.get("positions").unwrap().as_array().unwrap().len() { 
                 s1.get("height").unwrap().as_f64().unwrap()
             } else {
                 s2.get("height").unwrap().as_f64().unwrap()
-            } * map_scale);
+            }
+        );
         objects.push(ground);
 
     }
@@ -221,9 +224,9 @@ fn main() {
             sm.get_first("map")
                 .unwrap()
                 .draw(c.transform.trans(-map_pos.x, -map_pos.y), g);
-            for object in objects.iter() {
+            for object in objects.iter_mut() {
                 let obj = object.get_transform();
-                if obj.x() < window_size.width && obj.right() >= 0.0 {
+                if obj.x() < window_size.width && obj.xw() >= 0.0 {
                     object.draw(c.transform, g);
                 }
             }
@@ -237,7 +240,7 @@ fn main() {
             {
                 map_pos.x += player.get_vel_x();
                 for object in objects.iter_mut() {
-                    object.trans(-player.get_vel_x(), 0.0);
+                    object.translate(-player.get_vel_x(), 0.0);
                 }
             } else {
                 player.update_position_x(u.dt * 100.0);
@@ -266,8 +269,8 @@ fn main() {
             }
         }
 
-        e.mouse_cursor(|_| {
-            // ground.set_position(pos[0], pos[1]);
-        });
+        // e.mouse_cursor(|pos| {
+        //     player.set_position(pos[0], pos[1]);
+        // });
     }
 }
