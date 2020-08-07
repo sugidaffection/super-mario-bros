@@ -94,7 +94,7 @@ impl PhysicsEvent for Physics {
   }
 
   fn jump(&mut self) {
-    self.acc.y -= 15.0;
+    self.acc.y -= 20.0;
   }
 
   fn stop(&mut self) {
