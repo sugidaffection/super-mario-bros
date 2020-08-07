@@ -35,6 +35,7 @@ pub trait Trans {
   fn rotate(&mut self, x: f64, y: f64);
 }
 
+#[derive(Clone, Copy)]
 pub struct Transform {
   pos: Vector2<f64>,
   size: Size,

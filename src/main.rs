@@ -1,11 +1,10 @@
 use cgmath::Vector2;
 use find_folder::Search;
 use piston_window::*;
+use serde_json::{from_reader, Map, Value};
 use sprite::*;
-use std::collections::HashMap;
-use std::rc::Rc;
-use serde_json::{from_reader, Value, Map};
 use std::fs::File;
+use std::rc::Rc;
 
 mod player;
 use player::*;
@@ -15,57 +14,13 @@ mod libs {
     pub mod object;
     pub mod physics;
     pub mod transform;
+    pub mod sprites_manager;
 }
 
 use libs::controller::Controller;
-use libs::object::{Object2D, Object};
-use libs::transform::{Trans, Rect};
-
-pub struct SpriteManager<I: ImageSize> {
-    sprites: HashMap<String, Vec<Sprite<I>>>,
-}
-
-impl<I> SpriteManager<I>
-where
-    I: ImageSize,
-{
-    fn new() -> Self {
-        Self {
-            sprites: HashMap::default(),
-        }
-    }
-
-    fn load(&mut self, name: &'static str, rc: &Rc<I>, rect: [f64; 4], scale: [f64; 2]) {
-        let mut sprite: Sprite<I> = Sprite::from_texture_rect(rc.clone(), rect);
-        sprite.set_scale(scale[0], scale[0]);
-        sprite.set_position(rect[2] * scale[0] / 2.0, rect[3] * scale[1] / 2.0);
-
-        if let Some(sprites) = self.sprites.get_mut(name) {
-            sprites.push(sprite);
-        } else {
-            self.sprites.insert(name.to_owned(), vec![sprite]);
-        }
-    }
-
-    fn loads(&mut self, name: &'static str, rc: &Rc<I>, rects: Vec<[f64; 4]>, scale: [f64; 2]) {
-        for rect in rects {
-            self.load(name, rc, rect, scale);
-        }
-    }
-
-    #[allow(dead_code)]
-    fn get(&self, name: &'static str, index: usize) -> Option<&Sprite<I>> {
-        self.sprites.get(name).map(|x| &x[index])
-    }
-
-    fn get_mut(&mut self, name: &'static str, index: usize) -> Option<&mut Sprite<I>> {
-        self.sprites.get_mut(name).map(|x| &mut x[index])
-    }
-
-    fn get_first(&self, name: &'static str) -> Option<&Sprite<I>> {
-        self.sprites.get(name).map(|x| x.first().unwrap())
-    }
-}
+use libs::object::{Object, Object2D};
+use libs::transform::{Rect, Trans};
+use libs::sprites_manager::SpriteManager;
 
 fn main() {
     let window_size: Size = Size::from([640, 480]);
@@ -132,14 +87,14 @@ fn main() {
         [32.0, 16.0, 16.0, 16.0],
     ];
     player_sprites.loads(
-        "mario_small_red",
+        "default",
         &player_rc,
-        animations
-        .to_vec(),
+        animations.to_vec(),
         [map_scale, map_scale],
     );
 
-    let mut player = Player::new(player_sprites);
+    let mut player = Player::new();
+    player.set_sprites(player_sprites);
     player.set_scale(map_scale, map_scale);
     player.push_animation("idle", 0);
     player.push_animation("jump", 1);
@@ -149,21 +104,54 @@ fn main() {
     let mut map_pos = Vector2::from([0.0, 0.0]);
     let mut objects = Vec::new();
 
-    let json_objects:Value = from_reader(File::open(assets.join("map.json")).unwrap()).unwrap();
-    let grounds: &Vec<Value> = json_objects.as_object().unwrap().get("ground").unwrap().as_array().unwrap();
-    let pipes: &Vec<Value> = json_objects.as_object().unwrap().get("pipe").unwrap().as_array().unwrap();
-    let bricks: &Vec<Value> = json_objects.as_object().unwrap().get("brick").unwrap().as_array().unwrap();
-    let tile1: &Map<String, Value> = json_objects.as_object().unwrap().get("tile1").unwrap().as_object().unwrap();
-    let tile2: &Map<String, Value> = json_objects.as_object().unwrap().get("tile2").unwrap().as_object().unwrap();
+    let json_objects: Value = from_reader(File::open(assets.join("map.json")).unwrap()).unwrap();
+    let grounds: &Vec<Value> = json_objects
+        .as_object()
+        .unwrap()
+        .get("ground")
+        .unwrap()
+        .as_array()
+        .unwrap();
+    let pipes: &Vec<Value> = json_objects
+        .as_object()
+        .unwrap()
+        .get("pipe")
+        .unwrap()
+        .as_array()
+        .unwrap();
+    let bricks: &Vec<Value> = json_objects
+        .as_object()
+        .unwrap()
+        .get("brick")
+        .unwrap()
+        .as_array()
+        .unwrap();
+    let tile1: &Map<String, Value> = json_objects
+        .as_object()
+        .unwrap()
+        .get("tile1")
+        .unwrap()
+        .as_object()
+        .unwrap();
+    let tile2: &Map<String, Value> = json_objects
+        .as_object()
+        .unwrap()
+        .get("tile2")
+        .unwrap()
+        .as_object()
+        .unwrap();
 
-    for obj in grounds.iter()
-        .chain(pipes.iter())
-        .chain(bricks.iter())
-     {
+    for obj in grounds.iter().chain(pipes.iter()).chain(bricks.iter()) {
         let mut ground = Object::new();
         ground.set_scale(map_scale, map_scale);
-        ground.set_position(obj["x"].as_f64().unwrap() * map_scale, obj["y"].as_f64().unwrap() * map_scale);
-        ground.set_size(obj["width"].as_f64().unwrap(), obj["height"].as_f64().unwrap());
+        ground.set_position(
+            obj["x"].as_f64().unwrap() * map_scale,
+            obj["y"].as_f64().unwrap() * map_scale,
+        );
+        ground.set_size(
+            obj["width"].as_f64().unwrap(),
+            obj["height"].as_f64().unwrap(),
+        );
         objects.push(ground);
     }
 
@@ -177,45 +165,59 @@ fn main() {
 
     let tile_rc = Rc::new(tile_texture);
 
-    for (i, obj) in tile1.get("positions").unwrap().as_array().unwrap().iter()
-        .chain(tile2.get("positions").unwrap().as_array().unwrap().iter()).enumerate() {
-
+    for (i, obj) in tile1
+        .get("positions")
+        .unwrap()
+        .as_array()
+        .unwrap()
+        .iter()
+        .chain(tile2.get("positions").unwrap().as_array().unwrap().iter())
+        .enumerate()
+    {
         let s1 = tile1.get("sprite").unwrap().as_object().unwrap();
         let s2 = tile2.get("sprite").unwrap().as_object().unwrap();
-        let mut sprite = Sprite::from_texture_rect(tile_rc.clone(), [
-            s1.get("x").unwrap().as_f64().unwrap(), 
-            s1.get("y").unwrap().as_f64().unwrap(), 
-            s1.get("width").unwrap().as_f64().unwrap(), 
-            s1.get("height").unwrap().as_f64().unwrap()
-        ]);
+        let mut sprite = Sprite::from_texture_rect(
+            tile_rc.clone(),
+            [
+                s1.get("x").unwrap().as_f64().unwrap(),
+                s1.get("y").unwrap().as_f64().unwrap(),
+                s1.get("width").unwrap().as_f64().unwrap(),
+                s1.get("height").unwrap().as_f64().unwrap(),
+            ],
+        );
 
-        if i >= tile1.get("positions").unwrap().as_array().unwrap().len() { 
-            sprite = Sprite::from_texture_rect(tile_rc.clone(), [
-                s2.get("x").unwrap().as_f64().unwrap(), 
-                s2.get("y").unwrap().as_f64().unwrap(), 
-                s2.get("width").unwrap().as_f64().unwrap(), 
-                s2.get("height").unwrap().as_f64().unwrap()
-            ])
+        if i >= tile1.get("positions").unwrap().as_array().unwrap().len() {
+            sprite = Sprite::from_texture_rect(
+                tile_rc.clone(),
+                [
+                    s2.get("x").unwrap().as_f64().unwrap(),
+                    s2.get("y").unwrap().as_f64().unwrap(),
+                    s2.get("width").unwrap().as_f64().unwrap(),
+                    s2.get("height").unwrap().as_f64().unwrap(),
+                ],
+            )
         };
 
         let mut ground = Object::new();
         ground.set_scale(map_scale, map_scale);
         ground.set_sprite(sprite);
-        ground.set_position(obj["x"].as_f64().unwrap() * map_scale, obj["y"].as_f64().unwrap() * map_scale);
+        ground.set_position(
+            obj["x"].as_f64().unwrap() * map_scale,
+            obj["y"].as_f64().unwrap() * map_scale,
+        );
         ground.set_size(
-            if i < tile1.get("positions").unwrap().as_array().unwrap().len() { 
+            if i < tile1.get("positions").unwrap().as_array().unwrap().len() {
                 s1.get("width").unwrap().as_f64().unwrap()
-            } else { 
+            } else {
                 s2.get("width").unwrap().as_f64().unwrap()
-            }, 
-            if i < tile1.get("positions").unwrap().as_array().unwrap().len() { 
+            },
+            if i < tile1.get("positions").unwrap().as_array().unwrap().len() {
                 s1.get("height").unwrap().as_f64().unwrap()
             } else {
                 s2.get("height").unwrap().as_f64().unwrap()
-            }
+            },
         );
         objects.push(ground);
-
     }
 
     while let Some(e) = window.next() {
@@ -234,7 +236,8 @@ fn main() {
         });
 
         if let Some(u) = e.update_args() {
-            if !player.is_less_center(window.size())
+            player.limit_move_size(window_size);
+            if !player.is_can_move()
                 && player.dir_right()
                 && map_pos.x < map_width * map_scale - window_size.width
             {

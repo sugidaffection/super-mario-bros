@@ -5,13 +5,10 @@ use sprite::{Scene, Sprite};
 use cgmath::Vector2;
 use crate::libs::transform::{Transform, Trans, Rect};
 
-pub trait Object2D<I>
-where I: ImageSize {
+pub trait Object2D<I: ImageSize> {
   fn new() -> Self;
-  fn get_transform(&self) -> &Transform;
-  fn is_solid(&self) -> &bool;
-  fn set_solid(&mut self, value: bool);
   fn draw<B: Graphics<Texture = I>>(&mut self, t: Matrix2d, b: &mut B);
+  fn update(&mut self, dt: f64);
 }
 
 pub struct Object<I: ImageSize> {
@@ -27,8 +24,20 @@ pub struct Object<I: ImageSize> {
 impl <I> Object<I>
 where I: ImageSize {
 
+  pub fn is_solid(&self) -> bool {
+    self.solid
+  }
+
+  pub fn set_solid(&mut self, value: bool) {
+    self.solid = value;
+  }
+
   pub fn set_transparent(&mut self, value: bool) {
     self.transparent = value;
+  }
+
+  pub fn get_transform(&self) -> Transform {
+    self.transform
   }
 
   pub fn set_border(&mut self, value: bool) {
@@ -66,18 +75,6 @@ where I: ImageSize {
     }
   }
 
-  fn get_transform(&self) -> &Transform {
-    &self.transform
-  }
-
-  fn is_solid(&self) -> &bool {
-    &self.solid
-  }
-
-  fn set_solid(&mut self, value: bool) {
-    self.solid = value;
-  }
-
   fn draw<B: Graphics<Texture = I>>(&mut self, t: Matrix2d, b: &mut B) {
     if !self.transparent {
       if self.border {
@@ -100,6 +97,10 @@ where I: ImageSize {
       b)
     }
 
+  }
+
+  fn update(&mut self, dt: f64) {
+    
   }
 }
 
