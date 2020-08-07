@@ -1,7 +1,6 @@
 use graphics::math::Matrix2d;
 use graphics::{Graphics, Transformed};
 use piston_window::{ImageSize, Size};
-use std::collections::HashMap;
 
 use crate::libs::{
   object::{Object, Object2D},
@@ -18,7 +17,6 @@ pub enum PlayerDirection {
 
 pub struct Player<I: ImageSize> {
   sprites: SpriteManager<I>,
-  animation: HashMap<&'static str, Vec<usize>>,
   body: Physics,
   is_ground: bool,
 }
@@ -87,7 +85,7 @@ where
     self.body.vel.x
   }
 
-  pub fn jump(&mut self, dt: f64) {
+  pub fn jump(&mut self, _: f64) {
     if self.is_ground {
       self.is_ground = false;
       self.body.jump();
@@ -162,7 +160,6 @@ where
   fn new() -> Player<I> {
     Player {
       sprites: SpriteManager::new(),
-      animation: HashMap::default(),
       body: Physics::new(),
       is_ground: false,
     }
