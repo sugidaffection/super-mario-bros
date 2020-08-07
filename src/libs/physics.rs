@@ -55,7 +55,7 @@ impl Physics {
     self.vel.x += self.acc.x * dt;
   }
 
-  pub fn acc_x_is_nearest_zero(&self, precision: f64) -> bool {
+  pub fn acc_x_is_almost_zero(&self, precision: f64) -> bool {
     self.acc.x >= -precision && self.acc.x <= precision
   }
 

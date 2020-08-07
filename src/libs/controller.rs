@@ -23,7 +23,7 @@ impl Controller {
     }
   }
 
-  pub fn update<I: ImageSize>(&mut self, player: &mut Player<I>, dt: f64) {
+  pub fn update<I: ImageSize>(&mut self, player: &mut Player<I>) {
     if self.left {
       player.set_dir(PlayerDirection::Left)
     } else {
@@ -40,7 +40,7 @@ impl Controller {
     }
 
     if self.jump {
-      player.jump(dt);
+      player.jump();
     }
   }
 

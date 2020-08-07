@@ -85,7 +85,7 @@ where
     self.body.vel.x
   }
 
-  pub fn jump(&mut self, _: f64) {
+  pub fn jump(&mut self) {
     if self.is_ground {
       self.is_ground = false;
       self.body.jump();
@@ -184,7 +184,7 @@ where
       self.sprites.set_animation_name("jump");
     }
 
-    if self.body.acc_x_is_nearest_zero(0.01) && self.is_ground {
+    if self.body.acc_x_is_almost_zero(0.01) && self.is_ground {
       self.sprites.set_animation_name("idle");
     }
 

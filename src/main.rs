@@ -13,14 +13,14 @@ mod libs {
     pub mod controller;
     pub mod object;
     pub mod physics;
-    pub mod transform;
     pub mod sprites_manager;
+    pub mod transform;
 }
 
 use libs::controller::Controller;
 use libs::object::{Object, Object2D};
-use libs::transform::{Rect, Trans};
 use libs::sprites_manager::SpriteManager;
+use libs::transform::{Rect, Trans};
 
 fn main() {
     let window_size: Size = Size::from([640, 480]);
@@ -257,7 +257,7 @@ fn main() {
                 map_pos.x = map_width * map_scale - window_size.width;
             }
 
-            controller.update(&mut player, u.dt * 100.0);
+            controller.update(&mut player);
             player.update(u.dt * 100.0);
             for object in objects.iter() {
                 player.collide_with(object);
