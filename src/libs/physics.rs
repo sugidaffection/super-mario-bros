@@ -1,5 +1,5 @@
+use crate::libs::transform::{Trans, Transform};
 use cgmath::Vector2;
-use crate::libs::transform::{Transform, Trans};
 
 pub trait PhysicsEvent {
   fn walk(&mut self);
@@ -17,14 +17,14 @@ pub struct Physics {
   pub friction: f64,
   pub gravity: f64,
   pub max_jump: f64,
+  pub jump_force: f64,
   pub transform: Transform,
-  can_move: bool,
-  can_jump: bool,
-  is_grounded: bool
+  pub can_move: bool,
+  pub can_jump: bool,
+  pub is_grounded: bool,
 }
 
 impl Physics {
-
   pub fn new() -> Self {
     Self {
       acc: Vector2 { x: 0.0, y: 0.0 },
@@ -34,10 +34,11 @@ impl Physics {
       friction: 0.9,
       gravity: 0.7,
       max_jump: 15.0,
+      jump_force: -15.0,
       transform: Transform::new(),
       can_move: false,
       can_jump: false,
-      is_grounded: false
+      is_grounded: false,
     }
   }
 
@@ -49,10 +50,10 @@ impl Physics {
     self.can_move
   }
 
-
   pub fn accelerate(&mut self, dt: f64) {
     self.acc.x += self.speed * dt;
     self.vel.x += self.acc.x * dt;
+    self.vel.y += self.acc.x * dt;
   }
 
   pub fn acc_x_is_almost_zero(&self, precision: f64) -> bool {
@@ -80,13 +81,15 @@ impl Physics {
       self.vel.y = -self.max_jump;
     }
   }
-
 }
 
 impl PhysicsEvent for Physics {
-
   fn walk(&mut self) {
-    self.speed = if self.transform.is_flip_x() { -0.5 } else { 0.5 };
+    self.speed = if self.transform.is_flip_x() {
+      -0.5
+    } else {
+      0.5
+    };
   }
 
   fn run(&mut self) {
@@ -94,7 +97,10 @@ impl PhysicsEvent for Physics {
   }
 
   fn jump(&mut self) {
-    self.acc.y -= 20.0;
+    if self.is_grounded {
+      self.vel.y += self.jump_force;
+      self.is_grounded = false;
+    }
   }
 
   fn stop(&mut self) {
@@ -108,11 +114,9 @@ impl PhysicsEvent for Physics {
     self.limit_speed();
 
     self.acc.y += self.gravity * dt;
-    self.vel.y += self.acc.y * dt;
-    self.transform.translate_y(self.vel.y * dt);
+    self.vel.y += self.acc.y;
+    self.transform.translate_y(self.vel.y);
 
-    self.acc *= 0.1;
-
+    self.acc *= 0.0;
   }
-
 }

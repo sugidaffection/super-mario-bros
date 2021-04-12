@@ -13,7 +13,7 @@ pub trait Rect {
   fn rect_right(&self) -> Vector2<f64>;
   fn rect_bottom(&self) -> Vector2<f64>;
   fn rect_center(&self) -> Vector2<f64>;
-  fn rect(&self) -> [f64;4];
+  fn rect(&self) -> [f64; 4];
 }
 
 pub trait Trans {
@@ -48,21 +48,20 @@ pub struct Transform {
 impl Transform {
   pub fn new() -> Self {
     Self {
-      pos: Vector2::from([0.0,0.0]),
+      pos: Vector2::from([0.0, 0.0]),
       size: Size {
         width: 16.0,
         height: 16.0,
       },
-      scale: Vector2::from([1.0,1.0]),
-      rot: Vector2::from([0.0,0.0]),
+      scale: Vector2::from([1.0, 1.0]),
+      rot: Vector2::from([0.0, 0.0]),
       flip_x: false,
-      flip_y: false
+      flip_y: false,
     }
   }
 }
 
 impl Rect for Transform {
-  
   fn x(&self) -> f64 {
     self.pos.x
   }
@@ -107,14 +106,12 @@ impl Rect for Transform {
     Vector2::from([self.xw() / 2.0, self.yh() / 2.0])
   }
 
-  fn rect(&self) -> [f64;4] {
+  fn rect(&self) -> [f64; 4] {
     [self.x(), self.y(), self.w(), self.h()]
   }
-
 }
 
 impl Trans for Transform {
-
   fn set_scale(&mut self, x: f64, y: f64) {
     self.scale.x = x;
     self.scale.y = y;
@@ -183,5 +180,4 @@ impl Trans for Transform {
     self.rot.x = x;
     self.rot.y = y;
   }
-
 }

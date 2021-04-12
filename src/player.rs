@@ -3,10 +3,11 @@ use graphics::{Graphics, Transformed};
 use piston_window::{ImageSize, Size};
 
 use crate::libs::{
+  collider::Collision,
   object::{Object, Object2D},
   physics::{Physics, PhysicsEvent},
   sprites_manager::SpriteManager,
-  transform::{Rect, Trans},
+  transform::{Rect, Trans, Transform},
 };
 
 #[derive(PartialEq)]
@@ -18,7 +19,6 @@ pub enum PlayerDirection {
 pub struct Player<I: ImageSize> {
   sprites: SpriteManager<I>,
   body: Physics,
-  is_ground: bool,
 }
 
 impl<I> Player<I>
@@ -63,6 +63,14 @@ where
     }
   }
 
+  pub fn get_transform(&self) -> Transform {
+    self.body.transform
+  }
+
+  pub fn set_position(&mut self, x: f64, y: f64) {
+    self.body.transform.set_position(x, y);
+  }
+
   pub fn update_position_x(&mut self, dt: f64) {
     self.body.transform.translate_x(self.body.vel.x * dt);
   }
@@ -86,10 +94,7 @@ where
   }
 
   pub fn jump(&mut self) {
-    if self.is_ground {
-      self.is_ground = false;
-      self.body.jump();
-    }
+    self.body.jump();
   }
 
   pub fn stop(&mut self) {
@@ -97,11 +102,9 @@ where
   }
 
   pub fn collide_with(&mut self, obj: &Object<I>) {
-    if self.body.transform.x() < obj.get_transform().xw()
-      && self.body.transform.xw() > obj.get_transform().x()
-      && self.body.transform.y() < obj.get_transform().yh()
-      && self.body.transform.yh() > obj.get_transform().y()
-    {
+    let collide: bool = Collision::aabb(self.body.transform, obj.get_transform());
+
+    if collide {
       // Collide right side
       if self.body.transform.xw() > obj.get_transform().x()
         && self.body.transform.center_xw() < obj.get_transform().x()
@@ -136,7 +139,7 @@ where
           .transform
           .set_position_y(obj.get_position().y - self.body.transform.h());
         self.body.vel.y = 0.0;
-        self.is_ground = true;
+        self.body.is_grounded = true;
       }
 
       // collide top side
@@ -147,7 +150,7 @@ where
       {
         self.body.transform.set_position_y(obj.get_transform().yh());
         self.body.vel.y = 0.0;
-        self.is_ground = false;
+        self.body.is_grounded = false;
       }
     }
   }
@@ -161,7 +164,6 @@ where
     Player {
       sprites: SpriteManager::new(),
       body: Physics::new(),
-      is_ground: false,
     }
   }
 
@@ -180,11 +182,11 @@ where
   fn update(&mut self, dt: f64) {
     self.sprites.play(dt * 0.125);
 
-    if !self.is_ground {
+    if !self.body.is_grounded {
       self.sprites.set_animation_name("jump");
     }
 
-    if self.body.acc_x_is_almost_zero(0.01) && self.is_ground {
+    if self.body.acc_x_is_almost_zero(0.01) && self.body.is_grounded {
       self.sprites.set_animation_name("idle");
     }
 

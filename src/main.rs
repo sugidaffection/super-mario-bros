@@ -1,4 +1,4 @@
-use cgmath::Vector2;
+use cgmath::{InnerSpace, Vector2};
 use find_folder::Search;
 use piston_window::*;
 use serde_json::{from_reader, Map, Value};
@@ -10,6 +10,7 @@ mod player;
 use player::*;
 
 mod libs {
+    pub mod collider;
     pub mod controller;
     pub mod object;
     pub mod physics;
@@ -30,7 +31,7 @@ fn main() {
         .build()
         .unwrap_or_else(|e| panic!("Failed to build PistonWindow: {}", e));
     window.set_lazy(false);
-    window.set_max_fps(60);
+    window.set_max_fps(30);
 
     let assets = Search::Parents(1).for_folder("assets").unwrap();
 
@@ -220,6 +221,7 @@ fn main() {
         objects.push(ground);
     }
 
+    let mut mouse_pos = [0.0, 0.0];
     while let Some(e) = window.next() {
         window.draw_2d(&e, |c, g, _d| {
             clear([0.0, 0.0, 0.0, 0.5], g);
@@ -234,6 +236,10 @@ fn main() {
             }
             player.draw(c.transform, g);
         });
+
+        if let Some(pos) = e.mouse_cursor_args() {
+            mouse_pos = pos;
+        }
 
         if let Some(u) = e.update_args() {
             player.limit_move_size(window_size);
@@ -259,6 +265,8 @@ fn main() {
 
             controller.update(&mut player);
             player.update(u.dt * 100.0);
+            // player.set_position(mouse_pos[0], mouse_pos[1]);
+
             for object in objects.iter() {
                 player.collide_with(object);
             }
@@ -271,9 +279,5 @@ fn main() {
                 controller.keyboard_event(key, args.state);
             }
         }
-
-        // e.mouse_cursor(|pos| {
-        //     player.set_position(pos[0], pos[1]);
-        // });
     }
 }
