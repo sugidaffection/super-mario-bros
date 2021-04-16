@@ -52,8 +52,8 @@ impl Physics {
 
   pub fn accelerate(&mut self, dt: f64) {
     self.acc.x += self.speed * dt;
-    self.vel.x += self.acc.x * dt;
-    self.vel.y += self.acc.x * dt;
+    self.acc.y = self.gravity;
+    self.vel += self.acc * dt;
   }
 
   pub fn acc_x_is_almost_zero(&self, precision: f64) -> bool {
@@ -62,24 +62,6 @@ impl Physics {
 
   pub fn deccelerate(&mut self) {
     self.vel.x *= self.friction;
-  }
-
-  pub fn limit_speed(&mut self) {
-    if self.vel.x > self.max_vel.x {
-      self.vel.x = self.max_vel.x;
-    }
-
-    if self.vel.x < -self.max_vel.x {
-      self.vel.x = -self.max_vel.x;
-    }
-
-    if self.vel.y > self.max_vel.y {
-      self.vel.y = self.max_vel.y;
-    }
-
-    if self.vel.y < -self.max_jump {
-      self.vel.y = -self.max_jump;
-    }
   }
 }
 
@@ -111,11 +93,8 @@ impl PhysicsEvent for Physics {
     self.accelerate(dt);
 
     self.deccelerate();
-    self.limit_speed();
 
-    self.acc.y += self.gravity * dt;
-    self.vel.y += self.acc.y;
-    self.transform.translate_y(self.vel.y);
+    self.transform.translate_y(self.vel.y * dt);
 
     self.acc *= 0.0;
   }
