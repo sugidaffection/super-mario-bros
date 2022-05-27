@@ -7,6 +7,7 @@ use crate::libs::{
   object::{Object, Object2D},
   physics::{Physics, PhysicsEvent},
   sprites_manager::SpriteManager,
+  spritesheet::{SpriteSheet, SpriteSheetConfig},
   transform::{Rect, Trans, Transform},
 };
 
@@ -25,8 +26,30 @@ impl<I> Player<I>
 where
   I: ImageSize,
 {
-  pub fn set_sprites(&mut self, sprites: SpriteManager<I>) {
-    self.sprites = sprites;
+  pub fn new(player_sprite_sheet: SpriteSheet<I>) -> Player<I> {
+    let mut player = Player {
+      sprites: SpriteManager::new(),
+      body: Physics::new(),
+    };
+    player.set_sprite_sheet(player_sprite_sheet);
+
+    player
+  }
+
+  pub fn set_sprite_sheet(&mut self, sprite_sheet: SpriteSheet<I>) {
+    self.sprites.set_spritesheet(sprite_sheet);
+  }
+
+  pub fn add_animation(&mut self, name: &'static str, animations: Vec<[usize; 2]>) {
+    self.sprites.add_animation(name, animations);
+  }
+
+  pub fn add_config(&mut self, name: &'static str, config: SpriteSheetConfig) {
+    self.sprites.add_config(name, config);
+  }
+
+  pub fn set_current_config(&mut self, name: &'static str) {
+    self.sprites.set_current_config(name);
   }
 
   pub fn set_scale(&mut self, x: f64, y: f64) {
@@ -39,15 +62,7 @@ where
 
   pub fn walk(&mut self) {
     self.body.walk();
-    self.sprites.set_animation_name("walk");
-  }
-
-  pub fn append_animation(&mut self, name: &'static str, animation: Vec<usize>) {
-    self.sprites.append_animation(name, animation);
-  }
-
-  pub fn push_animation(&mut self, name: &'static str, rect: usize) {
-    self.sprites.push_animation(name, rect);
+    self.sprites.play_animation("walk");
   }
 
   pub fn set_inside_window(&mut self, size: Size) {
@@ -160,40 +175,28 @@ impl<I> Object2D<I> for Player<I>
 where
   I: ImageSize,
 {
-  fn new() -> Player<I> {
-    Player {
-      sprites: SpriteManager::new(),
-      body: Physics::new(),
-    }
-  }
-
   fn draw<B: Graphics<Texture = I>>(&mut self, t: Matrix2d, b: &mut B) {
-    if let Some(sprite) = self.sprites.get_sprite_animation() {
-      sprite.draw(
-        t.trans(
-          self.body.transform.get_position().x,
-          self.body.transform.get_position().y,
-        ),
-        b,
-      )
-    }
+    let transformed = t.trans(
+      self.body.transform.get_position().x,
+      self.body.transform.get_position().y,
+    );
+    self.sprites.draw(transformed, b);
   }
 
   fn update(&mut self, dt: f64) {
-    self.sprites.play(dt * 0.125);
+    self.sprites.update(dt);
+    self.body.update(dt);
 
     if !self.body.is_grounded {
-      self.sprites.set_animation_name("jump");
+      self.sprites.play_animation("jump");
     }
 
-    if self.body.acc_x_is_almost_zero(0.01) && self.body.is_grounded {
-      self.sprites.set_animation_name("idle");
+    if self.body.vel_x_is_almost_zero(10.0) && self.body.is_grounded {
+      self.sprites.play_animation("idle");
     }
 
-    if let Some(sprite) = self.sprites.get_sprite_animation() {
+    if let Some(sprite) = self.sprites.get_sprite() {
       sprite.set_flip_x(self.body.transform.is_flip_x());
     }
-
-    self.body.update(dt);
   }
 }

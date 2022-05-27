@@ -7,9 +7,9 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-piston_window = "0.118.0"
-piston2d-sprite = "0.63.0"
-piston2d-graphics = "0.39.0"
+piston_window = "0.123.0"
+piston2d-sprite = "0.66.1"
+piston2d-graphics = "0.42.0"
 find_folder = "0.3.0"
 cgmath = "0.18.0"
 gfx = "0.18.2"

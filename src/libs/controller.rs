@@ -3,8 +3,8 @@ use piston_window::{ButtonState, ImageSize, Key};
 use crate::player::{Player, PlayerDirection};
 
 pub struct Controller {
-  left: bool,
-  right: bool,
+  pub left: bool,
+  pub right: bool,
   crouch: bool,
   jump: bool,
   shoot: bool,
