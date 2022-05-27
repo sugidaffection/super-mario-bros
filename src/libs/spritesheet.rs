@@ -1,0 +1,78 @@
+use cgmath::Vector2;
+use graphics::math::Matrix2d;
+use graphics::Graphics;
+use piston_window::{ImageSize, Size};
+use sprite::Sprite;
+use std::rc::Rc;
+
+pub struct SpriteSheetConfig {
+    pub grid: [usize; 2],
+    pub sprite_size: Size,
+    pub spacing: Vector2<f64>,
+    pub offset: Vector2<f64>,
+}
+
+pub struct SpriteSheet<I: ImageSize> {
+    sprite: Sprite<I>,
+    grid: [usize; 2],
+    sprite_size: Size,
+    spacing: Vector2<f64>,
+    offset: Vector2<f64>,
+}
+
+impl<I: ImageSize> SpriteSheet<I> {
+    pub fn new(texture: Rc<I>) -> Self {
+        let size = texture.get_size();
+        let mut sprite = Sprite::from_texture(texture);
+        sprite.set_anchor(0.0, 0.0);
+
+        let mut sprite = Self {
+            sprite: sprite,
+            grid: [1, 1],
+            sprite_size: Size::from(size),
+            spacing: Vector2::from([0.0, 0.0]),
+            offset: Vector2::from([0.0, 0.0]),
+        };
+        sprite.set_current_tiles(0, 0);
+        sprite
+    }
+
+    pub fn set_config(&mut self, config: &SpriteSheetConfig) {
+        self.grid = config.grid;
+        self.sprite_size = config.sprite_size;
+        self.spacing = config.spacing;
+        self.offset = config.offset;
+
+        self.set_current_tiles(0, 0);
+    }
+
+    pub fn clone_config(&mut self) -> SpriteSheetConfig {
+        SpriteSheetConfig {
+            grid: self.grid,
+            sprite_size: self.sprite_size,
+            spacing: self.spacing,
+            offset: self.offset,
+        }
+    }
+
+    pub fn set_current_tiles(&mut self, mut row: usize, mut col: usize) {
+        row %= self.grid[0];
+        col %= self.grid[1];
+        let src_rect = From::from([
+            self.offset.x + (self.sprite_size.width + self.spacing.x) * col as f64,
+            self.offset.y + (self.sprite_size.height + self.spacing.y) * row as f64,
+            self.sprite_size.width,
+            self.sprite_size.height,
+        ]);
+
+        self.sprite.set_src_rect(src_rect);
+    }
+
+    pub fn get_sprite(&mut self) -> Option<&mut Sprite<I>> {
+        Some(&mut self.sprite)
+    }
+
+    pub fn draw<B: Graphics<Texture = I>>(&self, t: Matrix2d, b: &mut B) {
+        self.sprite.draw(t, b);
+    }
+}
