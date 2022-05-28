@@ -10,6 +10,10 @@ use sprite::Sprite;
 use std::path::PathBuf;
 use std::rc::Rc;
 
+pub trait SpriteManagerFn<I: ImageSize> {
+    fn set_sprite_sheet(&mut self, sprite_sheet: SpriteSheet<I>);
+}
+
 pub struct SpriteConfig {
     pub name: &'static str,
     config: SpriteSheetConfig,
