@@ -1496,12 +1496,10 @@ checksum = "9df65f20698aeed245efdde3628a6b559ea1239bbb871af1b6e3b58c413b2bd1"
 
 [[package]]
 name = "super-mario-bros"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "cgmath",
  "find_folder",
- "gfx",
- "gfx_device_gl",
  "piston-music",
  "piston2d-graphics",
  "piston2d-sprite",

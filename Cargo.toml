@@ -1,6 +1,6 @@
 [package]
 name = "super-mario-bros"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Sugi <developer.sugiono@gmail.com>"]
 edition = "2018"
 
@@ -12,7 +12,5 @@ piston2d-sprite = "0.67.0"
 piston2d-graphics = "0.43.0"
 find_folder = "0.3.0"
 cgmath = "0.18.0"
-gfx = "0.18.2"
-gfx_device_gl = "0.16.2"
 serde_json = "1.0.64"
 piston-music = "0.26.0"

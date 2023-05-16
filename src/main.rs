@@ -1,4 +1,4 @@
-use cgmath::{InnerSpace, Vector2};
+use cgmath::Vector2;
 use find_folder::Search;
 use piston_window::*;
 use serde_json::{from_reader, Map, Value};
@@ -25,13 +25,11 @@ use libs::transform::{Rect, Trans};
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq)]
 enum Music {
-    WORLD_1_1,
+    World1_1,
 }
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq)]
-enum Sound {
-    Ding,
-}
+enum Sound {}
 
 fn main() {
     let window_size: Size = Size::from([640, 480]);
@@ -232,11 +230,9 @@ fn main() {
     }
 
     music::start::<Music, Sound, _>(16, || {
-        music::bind_music_file(Music::WORLD_1_1, "./assets/main_theme.mp3");
+        music::bind_music_file(Music::World1_1, "./assets/main_theme.mp3");
         music::set_volume(music::MAX_VOLUME);
-        music::play_music(&Music::WORLD_1_1, music::Repeat::Forever);
-
-        let mut mouse_pos = [0.0, 0.0];
+        music::play_music(&Music::World1_1, music::Repeat::Forever);
 
         while let Some(e) = window.next() {
             window.draw_2d(&e, |c, g, _d| {
@@ -253,9 +249,7 @@ fn main() {
                 player.draw(c.transform, g);
             });
 
-            if let Some(pos) = e.mouse_cursor_args() {
-                mouse_pos = pos;
-            }
+            if let Some(_pos) = e.mouse_cursor_args() {}
 
             if let Some(u) = e.update_args() {
                 player.limit_move_size(window_size);
