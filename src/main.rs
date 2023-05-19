@@ -58,8 +58,8 @@ fn main() {
         .build()
         .unwrap_or_else(|e| panic!("Failed to build PistonWindow: {}", e));
     window.set_lazy(false);
-    window.set_max_fps(60);
-    window.set_ups(60);
+    window.set_max_fps(30);
+    window.set_ups(30);
 
     let assets = Search::Parents(1).for_folder("assets").unwrap();
 
@@ -138,39 +138,26 @@ fn main() {
         music::play_music(&Music::World1_1, music::Repeat::Forever);
 
         while let Some(e) = window.next() {
-            window.draw_2d(&e, |c, g, _d| {
-                clear([0.0, 0.0, 0.0, 0.5], g);
-                tilemap_spritesheet.draw(c.transform.trans(-map_pos_x, 0.0), g);
-                player.draw(c.transform, g);
-                // map_img.draw(&*map_rc, &draw_state::DrawState::default(), c.transform, g);
-                // sm.get_first("map")
-                //     .unwrap()
-                //     .draw(c.transform.trans(-map_pos.x, -map_pos.y), g);
-                for object in objects.iter_mut() {
-                    let obj = object.get_transform();
-                    if obj.x() < window_size.width && obj.xw() >= 0.0 {
-                        object.draw(c.transform, g);
-                    }
-                }
-            });
-
             if let Some(r) = e.render_args() {
                 player.update_animation(r.ext_dt);
+                window.draw_2d(&e, |c, g, _d| {
+                    clear([0.0, 0.0, 0.0, 0.5], g);
+                    tilemap_spritesheet.draw(c.transform.trans(-map_pos_x, 0.0), g);
+                    player.draw(c.transform, g);
+                    // map_img.draw(&*map_rc, &draw_state::DrawState::default(), c.transform, g);
+                    // sm.get_first("map")
+                    //     .unwrap()
+                    //     .draw(c.transform.trans(-map_pos.x, -map_pos.y), g);
+                    for object in objects.iter_mut() {
+                        let obj = object.get_transform();
+                        if obj.x() < window_size.width && obj.xw() >= 0.0 {
+                            object.draw(c.transform, g);
+                        }
+                    }
+                });
             }
 
             if let Some(u) = e.update_args() {
-                // if !player.centered(window_size)
-                //     && player.dir_right()
-                //     && map_pos_x < map_width * map_scale - window_size.width
-                // {
-                //     map_pos_x += player.get_vel_x();
-                //     for object in objects.iter_mut() {
-                //         object.translate(-player.get_vel_x(), 0.0);
-                //     }
-                // } else {
-                //     player.update_position_x(u.dt);
-                // }
-
                 if map_pos_x < 0.0 {
                     map_pos_x = 0.0;
                 }
@@ -180,7 +167,6 @@ fn main() {
                 }
 
                 player.update(u.dt);
-                // // player.set_position(mouse_pos[0], mouse_pos[1]);
 
                 for object in objects.iter() {
                     player.collide_with(object);

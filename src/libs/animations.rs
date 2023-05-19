@@ -48,15 +48,15 @@ impl SpriteAnimation {
                 let t: f64 = if self.animation_interval > 0.0 {
                     self.animation_interval
                 } else {
-                    (60.0 / self.animations.len() as f64) * dt
+                    1.0 / self.animations.len() as f64
                 };
 
-                if self.animation_lt >= t {
-                    self.animation_idx += 1;
-                    self.animation_idx %= self.animations.len();
-                    self.animation_lt = 0.0;
-                }
                 self.animation_lt += dt;
+
+                if self.animation_lt >= t {
+                    self.animation_idx = (self.animation_idx + 1) % self.animations.len();
+                    self.animation_lt -= t;
+                }
             }
             AnimationState::IDLE => {}
         }

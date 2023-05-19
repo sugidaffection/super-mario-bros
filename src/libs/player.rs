@@ -2,6 +2,7 @@ use graphics::math::Matrix2d;
 use graphics::{Graphics, Transformed};
 use piston_window::{ButtonState, ImageSize, Key, Size};
 
+use super::collider::Side;
 use super::{
     collider::Collision,
     controller::Controller,
@@ -20,7 +21,7 @@ pub enum PlayerDirection {
 
 #[derive(PartialEq, Debug)]
 pub enum PlayerState {
-    Grounded,
+    Idle,
     Walk,
     Run,
     Jump,
@@ -72,85 +73,59 @@ where
         self.sprites.set_current_config(name);
     }
 
-    pub fn set_dir(&mut self, dir: PlayerDirection) {
-        self.transform.set_flip_x(dir == PlayerDirection::Left);
-        self.direction = dir;
-    }
-
     pub fn set_inside_window(&mut self, size: Size) {
         if self.transform.x() < 0.0 {
             self.transform.set_position_x(0.0);
         }
     }
 
-    pub fn walk(&mut self) {
-        self.state = PlayerState::Walk;
-    }
-
-    pub fn jump(&mut self) {
-        self.state = PlayerState::Jump;
-    }
-
-    pub fn centered(&mut self, window_size: Size) -> bool {
-        self.transform.center_xw() >= window_size.width / 2.0
-    }
-
     pub fn collide_with(&mut self, obj: &Object<I>) {
-        let collide: bool = Collision::aabb(self.transform, obj.get_transform());
+        let (collide, side) = Collision::aabb(&self.transform, &obj.get_transform());
 
         if collide {
-            // Collide right side
-            if self.transform.xw() > obj.get_transform().x()
-                && self.transform.center_xw() < obj.get_transform().x()
-                && self.transform.center_yh() > obj.get_transform().y()
-                && self.transform.center_yh() < obj.get_transform().yh()
-            {
-                self.transform
-                    .set_position_x(obj.get_position().x - self.transform.w());
-                self.physics.velocity.x = 0.0;
-            }
-
-            // collide left side
-            if self.transform.x() < obj.get_transform().xw()
-                && self.transform.center_xw() > obj.get_transform().xw()
-                && self.transform.center_yh() > obj.get_transform().y()
-                && self.transform.center_yh() < obj.get_transform().yh()
-            {
-                self.transform.set_position_x(obj.get_transform().xw());
-                self.physics.velocity.x = 0.0;
-            }
-
-            // collide bottom side
-            if self.transform.yh() > obj.get_transform().y()
-                && self.transform.center_yh() < obj.get_transform().y()
-                && self.transform.center_xw() > obj.get_transform().x()
-                && self.transform.center_xw() < obj.get_transform().xw()
-            {
-                self.transform
-                    .set_position_y(obj.get_position().y - self.transform.h());
-                self.physics.on_ground = true;
-                if self.state != PlayerState::Walk {
-                    self.state = PlayerState::Grounded;
+            match side {
+                Some(Side::RIGHT) => {
+                    self.transform
+                        .set_position_x(obj.get_position().x - self.transform.w());
+                    self.physics.velocity.x = 0.0;
                 }
-            }
-
-            // collide top side
-            if self.transform.y() < obj.get_transform().yh()
-                && self.transform.center_yh() > obj.get_transform().yh()
-                && self.transform.center_xw() > obj.get_transform().x()
-                && self.transform.center_xw() < obj.get_transform().xw()
-            {
-                self.transform.set_position_y(obj.get_transform().yh());
-                self.physics.on_ground = false;
+                Some(Side::LEFT) => {
+                    self.transform.set_position_x(obj.get_transform().xw());
+                    self.physics.velocity.x = 0.0;
+                }
+                Some(Side::TOP) => {
+                    self.transform.set_position_y(obj.get_transform().yh());
+                    self.physics.on_ground = false;
+                }
+                Some(Side::BOTTOM) => {
+                    self.transform
+                        .set_position_y(obj.get_position().y - self.transform.h());
+                    self.physics.on_ground = true;
+                    if self.state != PlayerState::Walk {
+                        self.state = PlayerState::Idle;
+                    }
+                }
+                None => {}
             }
         }
     }
 
     pub fn update_animation(&mut self, dt: f64) {
-        self.sprites.update(dt);
+        if self.input.left {
+            self.direction = PlayerDirection::Left;
+            self.state = PlayerState::Walk;
+        }
+
+        if self.input.right {
+            self.direction = PlayerDirection::Right;
+            self.state = PlayerState::Walk;
+        }
+
+        self.transform
+            .set_flip_x(self.direction == PlayerDirection::Left);
 
         match self.state {
-            PlayerState::Grounded => self.sprites.play_animation("idle"),
+            PlayerState::Idle => self.sprites.play_animation("idle"),
             PlayerState::Walk => {
                 if self.physics.on_ground {
                     self.sprites.play_animation("walk")
@@ -164,6 +139,8 @@ where
         if let Some(sprite) = self.sprites.get_sprite() {
             sprite.set_flip_x(self.transform.is_flip_x());
         }
+
+        self.sprites.update(dt);
     }
 
     pub fn update_input(&mut self, key: Key, state: ButtonState) {
@@ -183,33 +160,11 @@ where
     }
 
     fn update(&mut self, dt: f64) {
-        if self.input.left {
-            self.physics.speed = -1.0;
-            self.walk();
-            self.set_dir(PlayerDirection::Left)
-        }
-
-        if self.input.right {
-            self.physics.speed = 1.0;
-            self.walk();
-            self.set_dir(PlayerDirection::Right)
-        }
-
         if self.physics.vel_x_is_almost_zero(0.01) && self.state == PlayerState::Walk {
-            self.state = PlayerState::Grounded;
-            self.physics.speed = 0.0;
+            self.state = PlayerState::Idle;
         }
-
-        self.physics.update(dt);
-
-        if self.input.jump {
-            self.jump();
-            self.physics.apply_jump(dt);
-        } else {
-            self.physics.jump_timer = 0.0;
-        }
-
+        self.physics.update(dt, &self.input);
         self.transform
-            .translate(self.physics.velocity.x * dt, self.physics.velocity.y * dt);
+            .translate(self.physics.velocity.x, self.physics.velocity.y);
     }
 }
