@@ -57,7 +57,7 @@ fn main() {
         .build()
         .unwrap_or_else(|e| panic!("Failed to build PistonWindow: {}", e));
     window.set_lazy(false);
-    window.set_max_fps(30);
+    window.set_max_fps(120);
 
     let assets = Search::Parents(1).for_folder("assets").unwrap();
 

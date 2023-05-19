@@ -187,7 +187,7 @@ where
             self.sprites.play_animation("jump");
         }
 
-        if self.body.acc_x_is_almost_zero(10.0) && self.body.is_grounded {
+        if self.body.vel_x_is_almost_zero(10.0) && self.body.is_grounded {
             self.sprites.play_animation("idle");
         }
 
