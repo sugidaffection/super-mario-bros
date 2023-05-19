@@ -6,6 +6,7 @@ pub trait PhysicsEvent {
     fn run(&mut self);
     fn jump(&mut self);
     fn stop(&mut self);
+    fn fall(&mut self);
     fn update(&mut self, dt: f64);
 }
 #[derive(Debug)]
@@ -14,6 +15,7 @@ pub struct Physics {
     pub vel: Vector2<f64>,
     pub max_vel: Vector2<f64>,
     pub speed: f64,
+    pub move_speed: f64,
     pub friction: f64,
     pub gravity: f64,
     pub max_jump: f64,
@@ -22,23 +24,26 @@ pub struct Physics {
     pub can_move: bool,
     pub can_jump: bool,
     pub is_grounded: bool,
+    pub is_moving: bool,
 }
 
 impl Physics {
     pub fn new() -> Self {
         Self {
             acc: 0.8,
-            vel: Vector2::new(0.0, 0.0),
-            max_vel: Vector2::new(200.0, 800.0),
-            speed: 5.0,
-            friction: 0.8,
-            gravity: 1.8,
-            max_jump: 15.0,
-            jump_force: -20.0,
+            vel: Vector2 { x: 0.0, y: 0.0 },
+            max_vel: Vector2 { x: 5.0, y: 5.0 },
+            speed: 0.0,
+            move_speed: 100.0,
+            friction: 0.6,
+            gravity: 1.2,
+            max_jump: 5.0,
+            jump_force: 3.0,
             transform: Transform::new(),
             can_move: false,
             can_jump: false,
             is_grounded: false,
+            is_moving: false,
         }
     }
 
@@ -58,25 +63,40 @@ impl Physics {
 impl PhysicsEvent for Physics {
     fn walk(&mut self) {
         self.speed = if self.transform.is_flip_x() {
-            -5.0
+            -self.move_speed
         } else {
-            5.0
+            self.move_speed
         };
+
+        self.is_moving = true;
     }
 
     fn run(&mut self) {
-        self.speed = if self.transform.is_flip_x() { -1. } else { 1. };
+        self.speed = if self.transform.is_flip_x() {
+            -self.move_speed
+        } else {
+            self.move_speed
+        };
+        self.is_moving = true;
     }
 
     fn jump(&mut self) {
         if self.is_grounded {
-            self.vel.y += self.jump_force;
+            self.vel.y -= self.jump_force;
+            if self.vel.y < -self.max_jump {
+                self.vel.y = -self.max_jump;
+            }
             self.is_grounded = false;
         }
     }
 
+    fn fall(&mut self) {
+        self.transform.translate_y(self.vel.y);
+    }
+
     fn stop(&mut self) {
         self.speed = 0.0;
+        self.is_moving = false;
     }
 
     fn update(&mut self, dt: f64) {

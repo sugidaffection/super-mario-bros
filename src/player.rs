@@ -17,9 +17,21 @@ pub enum PlayerDirection {
     Right,
 }
 
+#[derive(PartialEq, Debug)]
+pub enum PlayerState {
+    Grounded,
+    Walk,
+    Run,
+    Jump,
+    Crouch,
+    Fall,
+    Skid,
+}
+
 pub struct Player<I: ImageSize> {
     sprites: SpriteManager<I>,
     body: Physics,
+    state: PlayerState,
 }
 
 impl<I> Player<I>
@@ -30,6 +42,7 @@ where
         let mut player = Player {
             sprites: SpriteManager::new(),
             body: Physics::new(),
+            state: PlayerState::Jump,
         };
         player.set_sprite_sheet(player_sprite_sheet);
 
@@ -60,20 +73,9 @@ where
         self.body.transform.set_flip_x(dir == PlayerDirection::Left);
     }
 
-    pub fn walk(&mut self) {
-        self.body.walk();
-        self.sprites.play_animation("walk");
-    }
-
     pub fn set_inside_window(&mut self, size: Size) {
         if self.body.transform.x() < 0.0 {
             self.body.transform.set_position_x(0.0);
-        }
-
-        if self.body.transform.xw() > size.width {
-            self.body
-                .transform
-                .set_position_x(size.width - self.body.transform.w());
         }
     }
 
@@ -86,7 +88,7 @@ where
     }
 
     pub fn update_position_x(&mut self, dt: f64) {
-        self.body.transform.translate_x(self.body.vel.x * dt);
+        self.body.transform.translate_x(self.body.vel.x);
     }
 
     pub fn limit_move_size(&mut self, size: Size) {
@@ -106,8 +108,12 @@ where
         self.body.vel.x
     }
 
+    pub fn walk(&mut self) {
+        self.state = PlayerState::Walk;
+    }
+
     pub fn jump(&mut self) {
-        self.body.jump();
+        self.state = PlayerState::Jump;
     }
 
     pub fn stop(&mut self) {
@@ -151,6 +157,9 @@ where
                     .set_position_y(obj.get_position().y - self.body.transform.h());
                 self.body.vel.y = 0.0;
                 self.body.is_grounded = true;
+                if self.state != PlayerState::Walk {
+                    self.state = PlayerState::Grounded;
+                }
             }
 
             // collide top side
@@ -165,8 +174,27 @@ where
             }
         }
     }
-}
 
+    pub fn update_animation(&mut self, dt: f64) {
+        self.sprites.update(dt);
+
+        match self.state {
+            PlayerState::Grounded => self.sprites.play_animation("idle"),
+            PlayerState::Walk => {
+                if self.body.is_grounded {
+                    self.sprites.play_animation("walk")
+                }
+            }
+            PlayerState::Run => self.sprites.play_animation("run"),
+            PlayerState::Jump => self.sprites.play_animation("jump"),
+            _ => {}
+        }
+
+        if let Some(sprite) = self.sprites.get_sprite() {
+            sprite.set_flip_x(self.body.transform.is_flip_x());
+        }
+    }
+}
 impl<I> Object2D<I> for Player<I>
 where
     I: ImageSize,
@@ -180,19 +208,18 @@ where
     }
 
     fn update(&mut self, dt: f64) {
-        self.sprites.update(dt);
+        if self.state == PlayerState::Walk {
+            self.body.walk();
+        }
+
+        if self.state == PlayerState::Jump {
+            self.body.jump();
+        }
+
+        if self.body.vel_x_is_almost_zero(0.01) && self.state == PlayerState::Walk {
+            self.state = PlayerState::Grounded;
+        }
+
         self.body.update(dt);
-
-        if !self.body.is_grounded {
-            self.sprites.play_animation("jump");
-        }
-
-        if self.body.vel_x_is_almost_zero(10.0) && self.body.is_grounded {
-            self.sprites.play_animation("idle");
-        }
-
-        if let Some(sprite) = self.sprites.get_sprite() {
-            sprite.set_flip_x(self.body.transform.is_flip_x());
-        }
     }
 }

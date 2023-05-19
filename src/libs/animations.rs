@@ -2,7 +2,7 @@ pub struct SpriteAnimation {
     pub name: &'static str,
     animations: Vec<[usize; 2]>,
     animation_lt: f64,
-    animation_time: f64,
+    animation_interval: f64,
     animation_idx: usize,
     state: AnimationState,
 }
@@ -19,14 +19,14 @@ impl SpriteAnimation {
             name: name,
             animations: animations,
             animation_lt: 0.0,
-            animation_time: 0.0,
+            animation_interval: 0.0,
             animation_idx: 0,
             state: AnimationState::IDLE,
         }
     }
 
-    pub fn set_animation_time(&mut self, t: f64) {
-        self.animation_time = t;
+    pub fn set_animation_interval(&mut self, t: f64) {
+        self.animation_interval = t;
     }
 
     pub fn get_animation(&self) -> Option<&[usize; 2]> {
@@ -45,10 +45,10 @@ impl SpriteAnimation {
     pub fn update(&mut self, dt: f64) {
         match self.state {
             AnimationState::RUNNING => {
-                let t: f64 = if self.animation_time > 0.0 {
-                    self.animation_time
+                let t: f64 = if self.animation_interval > 0.0 {
+                    self.animation_interval
                 } else {
-                    self.animations.len() as f64 / 60.0
+                    (60.0 / self.animations.len() as f64) * dt
                 };
 
                 if self.animation_lt >= t {

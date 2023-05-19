@@ -406,6 +406,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
 
 [[package]]
+name = "fps_counter"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3aaba7ff514ee9d802b562927f80b1e94e93d8e74c31b134c9c3762dabf1a36b"
+
+[[package]]
 name = "fuchsia-cprng"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1498,6 +1504,7 @@ version = "0.2.0"
 dependencies = [
  "cgmath",
  "find_folder",
+ "fps_counter",
  "piston-music",
  "piston2d-graphics",
  "piston2d-sprite",

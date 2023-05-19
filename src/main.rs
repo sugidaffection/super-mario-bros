@@ -1,10 +1,11 @@
 use cgmath::Vector2;
 use find_folder::Search;
+use fps_counter::FPSCounter;
 use graphics::Transformed;
 use piston_window::texture::Filter;
 use piston_window::{
     clear, Button, ButtonEvent, EventLoop, Flip, G2dTexture, G2dTextureContext, ImageSize,
-    MouseCursorEvent, PistonWindow, Size, Texture, TextureSettings, UpdateEvent, WindowSettings,
+    PistonWindow, RenderEvent, Size, Texture, TextureSettings, UpdateEvent, WindowSettings,
 };
 use serde_json::{from_reader, Value};
 use std::fs::File;
@@ -29,7 +30,7 @@ use libs::controller::Controller;
 use libs::object::{Object, Object2D};
 use libs::sprites_manager::SpriteManager;
 use libs::spritesheet::{SpriteSheet, SpriteSheetConfig};
-use libs::transform::Trans;
+use libs::transform::{Rect, Trans};
 
 fn load_texture(mut context: &mut G2dTextureContext, p: &PathBuf) -> Rc<G2dTexture> {
     let mut texture_settings = TextureSettings::new();
@@ -51,13 +52,15 @@ fn main() {
     let height = 224.0;
     let aspect_ratio = height / width;
     let window_size: Size = Size::from([width, height]);
+    let mut timer = FPSCounter::default();
 
     let mut window: PistonWindow = WindowSettings::new("Super Goomba Bros", window_size)
         .exit_on_esc(true)
         .build()
         .unwrap_or_else(|e| panic!("Failed to build PistonWindow: {}", e));
     window.set_lazy(false);
-    window.set_max_fps(120);
+    window.set_max_fps(60);
+    window.set_ups(60);
 
     let assets = Search::Parents(1).for_folder("assets").unwrap();
 
@@ -130,7 +133,6 @@ fn main() {
         o.set_position(x, y);
         objects.push(o);
     }
-
     music::start::<Music, Sound, _>(16, || {
         music::bind_music_file(Music::World1_1, "./assets/main_theme.mp3");
         music::set_volume(music::MAX_VOLUME);
@@ -141,20 +143,21 @@ fn main() {
                 clear([0.0, 0.0, 0.0, 0.5], g);
                 tilemap_spritesheet.draw(c.transform.trans(-map_pos_x, 0.0), g);
                 player.draw(c.transform, g);
-
                 // map_img.draw(&*map_rc, &draw_state::DrawState::default(), c.transform, g);
                 // sm.get_first("map")
                 //     .unwrap()
                 //     .draw(c.transform.trans(-map_pos.x, -map_pos.y), g);
-                // for object in objects.iter_mut() {
-                //     let obj = object.get_transform();
-                //     if obj.x() < window_size.width && obj.xw() >= 0.0 {
-                //         object.draw(c.transform, g);
-                //     }
-                // }
+                for object in objects.iter_mut() {
+                    let obj = object.get_transform();
+                    if obj.x() < window_size.width && obj.xw() >= 0.0 {
+                        object.draw(c.transform, g);
+                    }
+                }
             });
 
-            if let Some(_pos) = e.mouse_cursor_args() {}
+            if let Some(r) = e.render_args() {
+                player.update_animation(r.ext_dt);
+            }
 
             if let Some(u) = e.update_args() {
                 player.limit_move_size(window_size);
@@ -162,9 +165,9 @@ fn main() {
                     && player.dir_right()
                     && map_pos_x < map_width * map_scale - window_size.width
                 {
-                    map_pos_x += player.get_vel_x() * u.dt;
+                    map_pos_x += player.get_vel_x();
                     for object in objects.iter_mut() {
-                        object.translate(-player.get_vel_x() * u.dt, 0.0);
+                        object.translate(-player.get_vel_x(), 0.0);
                     }
                 } else {
                     player.update_position_x(u.dt);
