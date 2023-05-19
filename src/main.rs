@@ -12,15 +12,13 @@ use std::fs::File;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-mod player;
-use player::Player;
-
 mod libs {
     pub mod animations;
     pub mod collider;
     pub mod controller;
     pub mod object;
     pub mod physics;
+    pub mod player;
     pub mod sprites_manager;
     pub mod spritesheet;
     pub mod transform;
@@ -28,6 +26,7 @@ mod libs {
 
 use libs::controller::Controller;
 use libs::object::{Object, Object2D};
+use libs::player::Player;
 use libs::sprites_manager::SpriteManager;
 use libs::spritesheet::{SpriteSheet, SpriteSheetConfig};
 use libs::transform::{Rect, Trans};
@@ -160,18 +159,17 @@ fn main() {
             }
 
             if let Some(u) = e.update_args() {
-                player.limit_move_size(window_size);
-                if !player.is_can_move()
-                    && player.dir_right()
-                    && map_pos_x < map_width * map_scale - window_size.width
-                {
-                    map_pos_x += player.get_vel_x();
-                    for object in objects.iter_mut() {
-                        object.translate(-player.get_vel_x(), 0.0);
-                    }
-                } else {
-                    player.update_position_x(u.dt);
-                }
+                // if !player.centered(window_size)
+                //     && player.dir_right()
+                //     && map_pos_x < map_width * map_scale - window_size.width
+                // {
+                //     map_pos_x += player.get_vel_x();
+                //     for object in objects.iter_mut() {
+                //         object.translate(-player.get_vel_x(), 0.0);
+                //     }
+                // } else {
+                //     player.update_position_x(u.dt);
+                // }
 
                 if map_pos_x < 0.0 {
                     map_pos_x = 0.0;
@@ -181,7 +179,6 @@ fn main() {
                     map_pos_x = map_width * map_scale - window_size.width;
                 }
 
-                controller.update(&mut player);
                 player.update(u.dt);
                 // // player.set_position(mouse_pos[0], mouse_pos[1]);
 
@@ -194,7 +191,7 @@ fn main() {
 
             if let Some(args) = e.button_args() {
                 if let Button::Keyboard(key) = args.button {
-                    controller.keyboard_event(key, args.state);
+                    player.update_input(key, args.state);
                 }
             }
         }
