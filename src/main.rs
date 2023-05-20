@@ -15,6 +15,7 @@ use std::rc::Rc;
 
 mod libs {
     pub mod animations;
+    pub mod camera;
     pub mod collider;
     pub mod controller;
     pub mod object;
@@ -25,6 +26,7 @@ mod libs {
     pub mod transform;
 }
 
+use libs::camera::Camera;
 use libs::object::{Object, Object2D};
 use libs::player::Player;
 use libs::sprites_manager::SpriteManager;
@@ -72,6 +74,8 @@ fn main() {
     let mut map_pos_x = 0.0;
     let [map_width, map_height] = [map_size.0 as f64, map_size.1 as f64];
     let map_scale = map_height / height;
+
+    let mut camera = Camera::new(width, height, map_width, map_height);
 
     let player_path = assets.join("player.png");
     let player_texture = load_texture(&mut texture_context, &player_path);
@@ -136,7 +140,14 @@ fn main() {
             if let Some(r) = e.render_args() {
                 window.draw_2d(&e, |c, g, _d| {
                     clear([0.0, 0.0, 0.0, 0.5], g);
-                    tilemap_spritesheet.draw(c.transform.trans(-map_pos_x, 0.0), g);
+                    let camera_height = camera.viewport_height;
+                    let transform = c
+                        .trans(
+                            -camera.position.x,
+                            -camera.position.y + (window_size.height / 2.0) - (camera_height / 2.0),
+                        )
+                        .transform;
+                    tilemap_spritesheet.draw(transform, g);
                     // map_img.draw(&*map_rc, &draw_state::DrawState::default(), c.transform, g);
                     // sm.get_first("map")
                     //     .unwrap()
@@ -144,10 +155,10 @@ fn main() {
                     for object in objects.iter_mut() {
                         let obj = object.get_transform();
                         if obj.x() < window_size.width && obj.xw() >= 0.0 {
-                            object.draw(c.transform, g);
+                            object.draw(transform, g);
                         }
                     }
-                    player.draw(c.transform, g);
+                    player.draw(transform, g);
                 });
             }
 
@@ -171,6 +182,7 @@ fn main() {
                 }
 
                 player.set_inside_window(window_size);
+                camera.follow_player(&player);
             }
 
             if let Some(args) = e.button_args() {
