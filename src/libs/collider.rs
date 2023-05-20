@@ -1,5 +1,6 @@
 use crate::libs::transform::{Rect, Transform};
 
+#[derive(Debug)]
 pub enum Side {
     LEFT,
     RIGHT,
@@ -10,45 +11,37 @@ pub enum Side {
 pub struct Collision {}
 impl Collision {
     pub fn aabb(rect1: &Transform, rect2: &Transform) -> (bool, Option<Side>) {
-        let collide = f64::max(rect1.x(), rect1.xw()) >= f64::min(rect2.x(), rect2.xw())
-            && f64::min(rect1.x(), rect1.xw()) <= f64::max(rect2.x(), rect2.xw())
-            && f64::max(rect1.y(), rect1.yh()) >= f64::min(rect2.y(), rect2.yh())
-            && f64::min(rect1.y(), rect1.yh()) <= f64::max(rect2.y(), rect2.yh());
-
-        if collide {
-            if rect1.xw() > rect2.x()
-                && rect1.center_xw() < rect2.x()
-                && rect1.center_yh() > rect2.y()
-                && rect1.center_yh() < rect2.yh()
-            {
-                return (true, Some(Side::RIGHT));
-            }
-
-            if rect1.x() < rect2.xw()
-                && rect1.center_xw() > rect2.xw()
-                && rect1.center_yh() > rect2.y()
-                && rect1.center_yh() < rect2.yh()
-            {
-                return (true, Some(Side::LEFT));
-            }
-
-            if rect1.yh() > rect2.y()
-                && rect1.center_yh() < rect2.y()
-                && rect1.center_xw() > rect2.x()
-                && rect1.center_xw() < rect2.xw()
-            {
-                return (true, Some(Side::BOTTOM));
-            }
-
-            if rect1.y() < rect2.yh()
-                && rect1.center_yh() > rect2.yh()
-                && rect1.center_xw() > rect2.x()
-                && rect1.center_xw() < rect2.xw()
-            {
-                return (true, Some(Side::TOP));
-            }
+        if !Collision::check_overlap(rect1, rect2) {
+            return (false, None);
         }
 
-        (false, None)
+        let overlap_left = Collision::calculate_overlap(rect2.xw(), rect1.x());
+        let overlap_right = Collision::calculate_overlap(rect1.xw(), rect2.x());
+        let overlap_top = Collision::calculate_overlap(rect2.yh(), rect1.y());
+        let overlap_bottom = Collision::calculate_overlap(rect1.yh(), rect2.y());
+
+        let min_overlap = f64::min(
+            f64::min(overlap_left, overlap_right),
+            f64::min(overlap_top, overlap_bottom),
+        );
+
+        match min_overlap {
+            overlap if overlap == overlap_left => (true, Some(Side::LEFT)),
+            overlap if overlap == overlap_right => (true, Some(Side::RIGHT)),
+            overlap if overlap == overlap_top => (true, Some(Side::TOP)),
+            overlap if overlap == overlap_bottom => (true, Some(Side::BOTTOM)),
+            _ => (false, None),
+        }
+    }
+
+    fn check_overlap(rect1: &Transform, rect2: &Transform) -> bool {
+        rect1.xw() >= rect2.x()
+            && rect1.x() <= rect2.xw()
+            && rect1.yh() >= rect2.y()
+            && rect1.y() <= rect2.yh()
+    }
+
+    fn calculate_overlap(high: f64, low: f64) -> f64 {
+        high - low
     }
 }

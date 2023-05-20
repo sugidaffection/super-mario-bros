@@ -53,12 +53,20 @@ where
             input: Controller::new(),
         };
         player.set_sprite_sheet(player_sprite_sheet);
+        player.set_animation();
+        player.set_position(20.0, 20.0);
 
         player
     }
 
     pub fn set_sprite_sheet(&mut self, sprite_sheet: SpriteSheet<I>) {
         self.sprites.set_spritesheet(sprite_sheet);
+    }
+
+    pub fn set_animation(&mut self) {
+        self.add_animation("idle", vec![[0, 0]]);
+        self.add_animation("jump", vec![[0, 5]]);
+        self.add_animation("walk", vec![[0, 1], [0, 2], [0, 3]]);
     }
 
     pub fn add_animation(&mut self, name: &'static str, animations: Vec<[usize; 2]>) {
@@ -75,8 +83,13 @@ where
 
     pub fn set_inside_window(&mut self, size: Size) {
         if self.transform.x() < 0.0 {
-            self.transform.set_position_x(0.0);
+            let overlap: f64 = self.transform.x() - 0.0;
+            self.transform.translate_x(-overlap);
         }
+    }
+
+    pub fn set_position(&mut self, x: f64, y: f64) {
+        self.transform.set_position(x, y);
     }
 
     pub fn collide_with(&mut self, obj: &Object<I>) {
@@ -85,25 +98,29 @@ where
         if collide {
             match side {
                 Some(Side::RIGHT) => {
-                    self.transform
-                        .set_position_x(obj.get_position().x - self.transform.w());
+                    // Resolve collision and prevent player from going beyond the right side of the screen
+                    let overlap = obj.get_transform().x() - self.transform.xw();
+                    self.transform.translate(overlap, 0.0);
                     self.physics.velocity.x = 0.0;
                 }
                 Some(Side::LEFT) => {
-                    self.transform.set_position_x(obj.get_transform().xw());
+                    // Resolve collision and prevent player from going beyond the left side of the screen
+                    let overlap = self.transform.x() - obj.get_transform().xw();
+                    self.transform.translate(-overlap, 0.0);
                     self.physics.velocity.x = 0.0;
                 }
                 Some(Side::TOP) => {
-                    self.transform.set_position_y(obj.get_transform().yh());
-                    self.physics.on_ground = false;
+                    // Resolve collision and prevent player from going beyond the top side of the screen
+                    let overlap = self.transform.y() - obj.get_transform().yh();
+                    self.transform.translate(0.0, -overlap);
+                    self.physics.velocity.y = 0.0;
                 }
                 Some(Side::BOTTOM) => {
-                    self.transform
-                        .set_position_y(obj.get_position().y - self.transform.h());
+                    // Resolve collision and prevent player from going beyond the bottom side of the screen
+                    let overlap = self.transform.yh() - obj.get_transform().y();
+                    self.transform.translate(0.0, -overlap);
+                    self.physics.velocity.y = 0.0;
                     self.physics.on_ground = true;
-                    if self.state != PlayerState::Walk {
-                        self.state = PlayerState::Idle;
-                    }
                 }
                 None => {}
             }
@@ -111,16 +128,6 @@ where
     }
 
     pub fn update_animation(&mut self, dt: f64) {
-        if self.input.left {
-            self.direction = PlayerDirection::Left;
-            self.state = PlayerState::Walk;
-        }
-
-        if self.input.right {
-            self.direction = PlayerDirection::Right;
-            self.state = PlayerState::Walk;
-        }
-
         self.transform
             .set_flip_x(self.direction == PlayerDirection::Left);
 
@@ -144,7 +151,29 @@ where
     }
 
     pub fn update_input(&mut self, key: Key, state: ButtonState) {
+        if state == ButtonState::Press {
+            if key == Key::Left {
+                self.direction = PlayerDirection::Left;
+                self.state = PlayerState::Walk;
+            }
+
+            if key == Key::Right {
+                self.direction = PlayerDirection::Right;
+                self.state = PlayerState::Walk;
+            }
+        }
+
         self.input.keyboard_event(key, state)
+    }
+
+    fn update_state(&mut self) {
+        if self.physics.on_ground && self.physics.vel_x_is_almost_zero(0.01) {
+            self.state = PlayerState::Idle;
+        } else if self.physics.on_ground {
+            self.state = PlayerState::Walk;
+        } else {
+            self.state = PlayerState::Jump;
+        }
     }
 }
 impl<I> Object2D<I> for Player<I>
@@ -156,14 +185,14 @@ where
             self.transform.get_position().x,
             self.transform.get_position().y,
         );
+
         self.sprites.draw(transformed, b);
     }
 
     fn update(&mut self, dt: f64) {
-        if self.physics.vel_x_is_almost_zero(0.01) && self.state == PlayerState::Walk {
-            self.state = PlayerState::Idle;
-        }
         self.physics.update(dt, &self.input);
+        self.update_state();
+        self.update_animation(dt);
         self.transform
             .translate(self.physics.velocity.x, self.physics.velocity.y);
     }

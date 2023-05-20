@@ -58,9 +58,11 @@ impl<I: ImageSize> SpriteSheet<I> {
     pub fn set_current_tiles(&mut self, mut row: usize, mut col: usize) {
         row %= self.grid[0];
         col %= self.grid[1];
+        let sprite_width_with_spacing = self.sprite_size.width + self.spacing.x;
+        let sprite_height_with_spacing = self.sprite_size.height + self.spacing.y;
         let src_rect = From::from([
-            self.offset.x + (self.sprite_size.width + self.spacing.x) * col as f64,
-            self.offset.y + (self.sprite_size.height + self.spacing.y) * row as f64,
+            self.offset.x + sprite_width_with_spacing * col as f64,
+            self.offset.y + sprite_height_with_spacing * row as f64,
             self.sprite_size.width,
             self.sprite_size.height,
         ]);

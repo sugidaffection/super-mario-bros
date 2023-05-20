@@ -5,7 +5,8 @@ use graphics::Transformed;
 use piston_window::texture::Filter;
 use piston_window::{
     clear, Button, ButtonEvent, EventLoop, Flip, G2dTexture, G2dTextureContext, ImageSize,
-    PistonWindow, RenderEvent, Size, Texture, TextureSettings, UpdateEvent, WindowSettings,
+    MouseCursorEvent, PistonWindow, RenderEvent, Size, Texture, TextureSettings, UpdateEvent,
+    WindowSettings,
 };
 use serde_json::{from_reader, Value};
 use std::fs::File;
@@ -24,7 +25,6 @@ mod libs {
     pub mod transform;
 }
 
-use libs::controller::Controller;
 use libs::object::{Object, Object2D};
 use libs::player::Player;
 use libs::sprites_manager::SpriteManager;
@@ -86,11 +86,6 @@ fn main() {
     let mut player = Player::new(player_sprite_sheet);
     player.add_config("default", player_config_default);
     player.set_current_config("default");
-    player.add_animation("idle", vec![[0, 0]]);
-    player.add_animation("jump", vec![[0, 5]]);
-    player.add_animation("walk", vec![[0, 1], [0, 2], [0, 3]]);
-
-    let mut controller = Controller::new();
 
     let json_objects: Value =
         from_reader(File::open(assets.join("world_1_1.tmj")).unwrap()).unwrap();
@@ -139,11 +134,9 @@ fn main() {
 
         while let Some(e) = window.next() {
             if let Some(r) = e.render_args() {
-                player.update_animation(r.ext_dt);
                 window.draw_2d(&e, |c, g, _d| {
                     clear([0.0, 0.0, 0.0, 0.5], g);
                     tilemap_spritesheet.draw(c.transform.trans(-map_pos_x, 0.0), g);
-                    player.draw(c.transform, g);
                     // map_img.draw(&*map_rc, &draw_state::DrawState::default(), c.transform, g);
                     // sm.get_first("map")
                     //     .unwrap()
@@ -154,7 +147,12 @@ fn main() {
                             object.draw(c.transform, g);
                         }
                     }
+                    player.draw(c.transform, g);
                 });
+            }
+
+            if let Some(pos) = e.mouse_cursor_args() {
+                // player.set_position(pos[0], pos[1]);
             }
 
             if let Some(u) = e.update_args() {
