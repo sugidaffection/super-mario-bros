@@ -55,7 +55,8 @@ where
         player.set_sprite_sheet(player_sprite_sheet);
         player.set_animation();
         player.set_position(20.0, 20.0);
-
+        player.transform.set_size(24.0, 32.0);
+        player.physics.set_movement_speed(1.0);
         player
     }
 
@@ -64,9 +65,35 @@ where
     }
 
     pub fn set_animation(&mut self) {
-        self.add_animation("idle", vec![[0, 0]]);
-        self.add_animation("jump", vec![[0, 5]]);
-        self.add_animation("walk", vec![[0, 1], [0, 2], [0, 3]]);
+        self.add_animation("idle", vec![[1, 0]]);
+        self.add_animation("jump", vec![[0, 1]]);
+        self.add_animation(
+            "walk",
+            vec![
+                [0, 0],
+                [0, 1],
+                [0, 2],
+                [0, 3],
+                [0, 4],
+                [1, 0],
+                [1, 1],
+                [1, 2],
+                [1, 3],
+                [1, 4],
+                [2, 0],
+                [2, 1],
+                [2, 2],
+                [2, 3],
+                [2, 4],
+                [3, 0],
+                [3, 1],
+                [3, 2],
+                [3, 3],
+                [3, 4],
+                [4, 0],
+                [4, 1],
+            ],
+        );
     }
 
     pub fn add_animation(&mut self, name: &'static str, animations: Vec<[usize; 2]>) {
@@ -79,6 +106,15 @@ where
 
     pub fn set_current_config(&mut self, name: &'static str) {
         self.sprites.set_current_config(name);
+        if let Some(spritesheet) = self.sprites.get_spritesheet() {
+            let size = self.transform.get_size();
+            let sprite_size = spritesheet.get_sprite_size();
+            let scale_x = size.width / (sprite_size.width as f64);
+            let scale_y = size.height / (sprite_size.height as f64);
+            if let Some(sprite) = spritesheet.get_sprite() {
+                sprite.set_scale(scale_x, scale_y);
+            }
+        }
     }
 
     pub fn set_inside_window(&mut self, size: Size) {

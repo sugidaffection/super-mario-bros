@@ -52,7 +52,7 @@ impl Game {
             .exit_on_esc(true)
             .build()
             .unwrap_or_else(|e| panic!("Failed to build PistonWindow: {}", e));
-        window.set_ups(30);
+        window.set_ups(60);
 
         let mut context = window.create_texture_context();
 
@@ -67,7 +67,7 @@ impl Game {
             viewport_size.height,
             map_size.0.into(),
             map_size.1 as f64,
-            3.0,
+            2.0,
         );
 
         let objects = Self::load_objects();
@@ -91,13 +91,15 @@ impl Game {
     }
 
     fn load_player(context: &mut G2dTextureContext) -> Player<G2dTexture> {
-        let player_texture = Self::load_texture(context, "player.png");
+        let player_texture = Self::load_texture(context, "naruto3.png");
         let player_sprite_sheet = SpriteSheet::new(player_texture);
         let player_config_default = SpriteSheetConfig {
-            offset: Vector2::from([80.0, 34.0]),
-            spacing: Vector2::from([1.0, 47.0]),
-            grid: [21, 11],
-            sprite_size: Size::from([16.0, 16.0]),
+            offset: Vector2::from([0.0, 0.0]),
+            spacing: Vector2::from([0.0, 0.0]),
+            grid: [5, 5],
+            sprite_size: Size::from([480.0, 480.0]),
+            flip_x: true,
+            flip_y: false,
         };
         let mut player = Player::new(player_sprite_sheet);
         player.add_config("default", player_config_default);
@@ -229,7 +231,7 @@ fn main() {
     let mut game: Game = Game::new(window_size, viewport_size);
 
     music::start::<Music, Sound, _>(16, || {
-        music::bind_music_file(Music::World1_1, "./assets/main_theme.mp3");
+        music::bind_music_file(Music::World1_1, "./assets/Naruto.mp3");
         music::set_volume(music::MAX_VOLUME);
         music::play_music(&Music::World1_1, music::Repeat::Forever);
 

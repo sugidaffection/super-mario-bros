@@ -10,6 +10,8 @@ pub struct SpriteSheetConfig {
     pub sprite_size: Size,
     pub spacing: Vector2<f64>,
     pub offset: Vector2<f64>,
+    pub flip_x: bool,
+    pub flip_y: bool,
 }
 
 pub struct SpriteSheet<I: ImageSize> {
@@ -18,6 +20,8 @@ pub struct SpriteSheet<I: ImageSize> {
     sprite_size: Size,
     spacing: Vector2<f64>,
     offset: Vector2<f64>,
+    flip_x: bool,
+    flip_y: bool,
 }
 
 impl<I: ImageSize> SpriteSheet<I> {
@@ -32,6 +36,8 @@ impl<I: ImageSize> SpriteSheet<I> {
             sprite_size: Size::from(size),
             spacing: Vector2::from([0.0, 0.0]),
             offset: Vector2::from([0.0, 0.0]),
+            flip_x: false,
+            flip_y: false,
         };
         sprite.set_current_tiles(0, 0);
         sprite
@@ -42,6 +48,11 @@ impl<I: ImageSize> SpriteSheet<I> {
         self.sprite_size = config.sprite_size;
         self.spacing = config.spacing;
         self.offset = config.offset;
+        let scale_x = 16.0 / self.sprite_size.width;
+        let scale_y = 16.0 / self.sprite_size.height;
+        self.sprite.set_scale(scale_x, scale_y);
+        self.sprite.set_flip_x(config.flip_x);
+        self.sprite.set_flip_y(config.flip_y);
 
         self.set_current_tiles(0, 0);
     }
@@ -52,7 +63,13 @@ impl<I: ImageSize> SpriteSheet<I> {
             sprite_size: self.sprite_size,
             spacing: self.spacing,
             offset: self.offset,
+            flip_x: false,
+            flip_y: false,
         }
+    }
+
+    pub fn get_sprite_size(&self) -> &Size {
+        &self.sprite_size
     }
 
     pub fn set_current_tiles(&mut self, mut row: usize, mut col: usize) {

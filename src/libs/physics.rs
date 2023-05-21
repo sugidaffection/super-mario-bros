@@ -6,7 +6,6 @@ use super::controller::Controller;
 pub struct Physics {
     pub velocity: Vector2<f64>,
     pub on_ground: bool,
-    pub max_jump_timer: f64,
     pub movement_speed: f64,
     pub max_movement_speed: f64,
     pub gravity: f64,
@@ -16,6 +15,7 @@ pub struct Physics {
     pub jump_timer: f64,
     pub jump_duration: f64,
     pub jump_threshold: f64,
+    pub can_hold_jump: bool,
 }
 
 impl Physics {
@@ -23,17 +23,21 @@ impl Physics {
         Self {
             velocity: Vector2::new(0.0, 0.0),
             on_ground: false,
-            max_jump_timer: 0.5, // Adjust as needed
-            movement_speed: 5.0,
-            max_movement_speed: 5.0,
-            gravity: 1.2,
+            movement_speed: 0.1,
+            max_movement_speed: 1.0,
+            gravity: 9.8,
             max_fall_speed: 10.0,
-            friction: 0.5,
-            jump_power: 10.0,
+            friction: 0.8,
+            jump_power: 180.0,
             jump_timer: 0.0,
-            jump_duration: 0.5,
-            jump_threshold: 1.2,
+            jump_duration: 0.1,
+            jump_threshold: 0.1,
+            can_hold_jump: false,
         }
+    }
+
+    pub fn set_movement_speed(&mut self, speed: f64) {
+        self.movement_speed = speed;
     }
 
     pub fn vel_x_is_almost_zero(&self, precision: f64) -> bool {
@@ -41,7 +45,7 @@ impl Physics {
     }
 
     pub fn update(&mut self, dt: f64, input: &Controller) {
-        self.velocity.y += self.gravity;
+        self.velocity.y += self.gravity * dt;
 
         let mut movement_force = 0.0;
         if input.left {
@@ -58,13 +62,18 @@ impl Physics {
             .clamp(-self.max_movement_speed, self.max_movement_speed);
 
         if input.jump && self.on_ground {
-            self.velocity.y = -self.jump_power;
+            self.velocity.y -= self.jump_power * dt;
             self.on_ground = false;
             self.jump_timer = 0.0;
-        } else if input.jump && self.jump_timer < self.jump_duration {
+            self.can_hold_jump = true;
+        } else if input.jump && self.jump_timer < self.jump_duration && self.can_hold_jump {
             self.velocity.y -= self.jump_power * self.jump_threshold * dt;
             self.jump_timer += dt;
+        } else {
+            self.can_hold_jump = false;
         }
+
+        println!("{}", self.jump_timer);
 
         if self.on_ground {
             if self.velocity.x.abs() <= self.friction {

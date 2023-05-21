@@ -52,6 +52,10 @@ where
         self.sprite_sheet = Some(sprite_sheet);
     }
 
+    pub fn get_spritesheet(&mut self) -> Option<&mut SpriteSheet<I>> {
+        self.sprite_sheet.as_mut()
+    }
+
     pub fn get_sprite(&mut self) -> Option<&mut Sprite<I>> {
         if let Some(sprite_sheet) = &mut self.sprite_sheet {
             return sprite_sheet.get_sprite();
