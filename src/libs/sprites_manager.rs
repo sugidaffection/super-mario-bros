@@ -1,97 +1,135 @@
-use piston_window::ImageSize;
+use super::{
+    animations::SpriteAnimation,
+    spritesheet::{SpriteSheet, SpriteSheetConfig},
+};
+use piston_window::math::Matrix2d;
+use piston_window::{
+    Filter, Flip, G2dTexture, G2dTextureContext, Graphics, ImageSize, Texture, TextureSettings,
+};
 use sprite::Sprite;
-use std::collections::HashMap;
+use std::path::PathBuf;
 use std::rc::Rc;
 
+pub trait SpriteManagerFn<I: ImageSize> {
+    fn set_sprite_sheet(&mut self, sprite_sheet: SpriteSheet<I>);
+}
+
+pub struct SpriteConfig {
+    pub name: &'static str,
+    config: SpriteSheetConfig,
+}
+
 pub struct SpriteManager<I: ImageSize> {
-    sprites: HashMap<String, Vec<Sprite<I>>>,
-    current_sprite_name: &'static str,
-    animations: HashMap<String, Vec<usize>>,
-    current_animation_name: &'static str,
-    current_animation_loop: f64,
-    current_animation_index: usize,
+    sprite_sheet: Option<SpriteSheet<I>>,
+    sprite_configs: Vec<SpriteConfig>,
+    current_config_name: Option<&'static str>,
+    animations: Vec<SpriteAnimation>,
+    current_animation_name: Option<&'static str>,
 }
 
 impl<I> SpriteManager<I>
 where
     I: ImageSize,
 {
+    pub fn load_texture(mut context: &mut G2dTextureContext, p: &PathBuf) -> Rc<G2dTexture> {
+        let mut texture_settings = TextureSettings::new();
+        texture_settings.set_mag(Filter::Nearest);
+        let texture = Texture::from_path(&mut context, p, Flip::None, &texture_settings).unwrap();
+        Rc::new(texture)
+    }
+
     pub fn new() -> Self {
         Self {
-            sprites: HashMap::default(),
-            current_sprite_name: "default",
-            animations: HashMap::default(),
-            current_animation_name: "default",
-            current_animation_loop: 0.0,
-            current_animation_index: 0,
+            sprite_sheet: None,
+            animations: Vec::default(),
+            sprite_configs: Vec::default(),
+            current_config_name: None,
+            current_animation_name: None,
         }
     }
 
-    pub fn load(&mut self, name: &'static str, rc: &Rc<I>, rect: [f64; 4], scale: [f64; 2]) {
-        let mut sprite: Sprite<I> = Sprite::from_texture_rect(rc.clone(), rect);
-        sprite.set_scale(scale[0], scale[0]);
-        sprite.set_position(rect[2] * scale[0] / 2.0, rect[3] * scale[1] / 2.0);
+    pub fn set_spritesheet(&mut self, sprite_sheet: SpriteSheet<I>) {
+        self.sprite_sheet = Some(sprite_sheet);
+    }
 
-        if let Some(sprites) = self.sprites.get_mut(name) {
-            sprites.push(sprite);
-        } else {
-            self.sprites.insert(name.to_owned(), vec![sprite]);
+    pub fn get_sprite(&mut self) -> Option<&mut Sprite<I>> {
+        if let Some(sprite_sheet) = &mut self.sprite_sheet {
+            return sprite_sheet.get_sprite();
         }
-    }
-
-    pub fn loads(&mut self, name: &'static str, rc: &Rc<I>, rects: Vec<[f64; 4]>, scale: [f64; 2]) {
-        for rect in rects {
-            self.load(name, rc, rect, scale);
-        }
-    }
-
-    pub fn get(&self, name: &'static str, index: usize) -> Option<&Sprite<I>> {
-        self.sprites.get(name).map(|x| &x[index])
-    }
-
-    pub fn get_mut(&mut self, name: &'static str, index: usize) -> Option<&mut Sprite<I>> {
-        self.sprites.get_mut(name).map(|x| &mut x[index])
-    }
-
-    pub fn get_first(&self, name: &'static str) -> Option<&Sprite<I>> {
-        self.sprites.get(name).map(|x| x.first().unwrap())
-    }
-
-    pub fn append_animation(&mut self, name: &'static str, mut animations: Vec<usize>) {
-        if let Some(a) = self.animations.get_mut(name) {
-            a.append(&mut animations);
-        } else {
-            self.animations.insert(name.to_owned(), animations);
-        }
-    }
-
-    pub fn push_animation(&mut self, name: &'static str, rect: usize) {
-        if let Some(animation) = self.animations.get_mut(name) {
-            animation.push(rect);
-        } else {
-            self.animations.insert(name.to_owned(), vec![rect]);
-        }
-    }
-
-    pub fn set_animation_name(&mut self, animation: &'static str) {
-        self.current_animation_name = animation;
-    }
-
-    pub fn get_sprite_animation(&mut self) -> Option<&mut Sprite<I>> {
-        if let Some(animation) = self.animations.get(self.current_animation_name) {
-            self.current_animation_index = self.current_animation_loop as usize % animation.len();
-            if let Some(idx) = animation.get(self.current_animation_index) {
-                return self
-                    .sprites
-                    .get_mut(self.current_sprite_name)
-                    .map(|x| &mut x[*idx]);
-            }
-        }
-
         None
     }
 
-    pub fn play(&mut self, dt: f64) {
-        self.current_animation_loop += dt;
+    pub fn add_animation(&mut self, name: &'static str, animations: Vec<[usize; 2]>) {
+        let an = SpriteAnimation::new(name, animations);
+        self.animations.push(an);
+    }
+
+    pub fn add_config(&mut self, name: &'static str, options: SpriteSheetConfig) {
+        let sprite_config = SpriteConfig {
+            name: name,
+            config: options,
+        };
+        self.sprite_configs.push(sprite_config);
+    }
+
+    pub fn set_current_config(&mut self, name: &'static str) {
+        if let Some(sprite_sheet) = &mut self.sprite_sheet {
+            if let Some(sprite_config) = self.sprite_configs.iter().find(|x| x.name == name) {
+                self.current_config_name = Some(name);
+                sprite_sheet.set_config(&sprite_config.config);
+            } else {
+                self.current_config_name = None
+            }
+        }
+    }
+
+    pub fn play_animation(&mut self, name: &'static str) {
+        if let Some(animation) = self.animations.iter_mut().find(|x| x.name == name) {
+            self.current_animation_name = Some(name);
+            animation.play();
+        }
+    }
+
+    pub fn stop_animation(&mut self) {
+        self.animations.iter_mut().for_each(|x| {
+            x.stop();
+        })
+    }
+
+    pub fn draw<B: Graphics<Texture = I>>(&mut self, t: Matrix2d, b: &mut B) {
+        if let Some(sprite_sheet) = &mut self.sprite_sheet {
+            sprite_sheet.draw(t, b);
+
+            if let Some(animation_name) = self.current_animation_name {
+                if let Some(animation) = self
+                    .animations
+                    .iter_mut()
+                    .find(|x| x.name == animation_name)
+                {
+                    if let Some(animations) = animation.get_animation() {
+                        sprite_sheet.set_current_tiles(animations[0], animations[1]);
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn update(&mut self, dt: f64) {
+        if let Some(animation_name) = self.current_animation_name {
+            if let Some(animation) = self
+                .animations
+                .iter_mut()
+                .find(|x| x.name == animation_name)
+            {
+                animation.update(dt);
+            }
+
+            self.animations
+                .iter_mut()
+                .filter(|x| x.name != animation_name)
+                .for_each(|x| {
+                    x.stop();
+                });
+        }
     }
 }

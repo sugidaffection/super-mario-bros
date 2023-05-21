@@ -6,7 +6,6 @@ use piston_window::{rectangle, DrawState, ImageSize, Rectangle, Size};
 use sprite::{Scene, Sprite};
 
 pub trait Object2D<I: ImageSize> {
-    fn new() -> Self;
     fn draw<B: Graphics<Texture = I>>(&mut self, t: Matrix2d, b: &mut B);
     fn update(&mut self, dt: f64);
 }
@@ -25,6 +24,18 @@ impl<I> Object<I>
 where
     I: ImageSize,
 {
+    pub fn new() -> Object<I> {
+        Object {
+            color: [1.0, 1.0, 1.0, 1.0],
+            border: false,
+            transparent: true,
+            solid: true,
+            transform: Transform::new(),
+            scene: None,
+            sprite: None,
+        }
+    }
+
     pub fn is_solid(&self) -> bool {
         self.solid
     }
@@ -60,12 +71,9 @@ where
     }
 }
 
-impl<I> Object2D<I> for Object<I>
-where
-    I: ImageSize,
-{
-    fn new() -> Object<I> {
-        Object {
+impl<I: ImageSize> Default for Object<I> {
+    fn default() -> Self {
+        Self {
             color: [1.0, 1.0, 1.0, 1.0],
             border: false,
             transparent: true,
@@ -75,7 +83,12 @@ where
             sprite: None,
         }
     }
+}
 
+impl<I> Object2D<I> for Object<I>
+where
+    I: ImageSize,
+{
     fn draw<B: Graphics<Texture = I>>(&mut self, t: Matrix2d, b: &mut B) {
         if !self.transparent {
             if self.border {
@@ -89,7 +102,6 @@ where
                 rectangle(self.color, self.transform.rect(), t, b);
             }
         }
-
         let scale = self.get_scale();
         if let Some(sprite) = self.sprite.as_mut() {
             sprite.set_scale(scale.x, scale.y);

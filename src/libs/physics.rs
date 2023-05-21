@@ -1,101 +1,79 @@
-use crate::libs::transform::{Trans, Transform};
 use cgmath::Vector2;
 
-pub trait PhysicsEvent {
-  fn walk(&mut self);
-  fn run(&mut self);
-  fn jump(&mut self);
-  fn stop(&mut self);
-  fn update(&mut self, dt: f64);
-}
+use super::controller::Controller;
 
+#[derive(Debug)]
 pub struct Physics {
-  pub acc: Vector2<f64>,
-  pub vel: Vector2<f64>,
-  pub max_vel: Vector2<f64>,
-  pub speed: f64,
-  pub friction: f64,
-  pub gravity: f64,
-  pub max_jump: f64,
-  pub jump_force: f64,
-  pub transform: Transform,
-  pub can_move: bool,
-  pub can_jump: bool,
-  pub is_grounded: bool,
+    pub velocity: Vector2<f64>,
+    pub on_ground: bool,
+    pub max_jump_timer: f64,
+    pub movement_speed: f64,
+    pub max_movement_speed: f64,
+    pub gravity: f64,
+    pub max_fall_speed: f64,
+    pub friction: f64,
+    pub jump_power: f64,
+    pub jump_timer: f64,
+    pub jump_duration: f64,
+    pub jump_threshold: f64,
 }
 
 impl Physics {
-  pub fn new() -> Self {
-    Self {
-      acc: Vector2 { x: 0.0, y: 0.0 },
-      vel: Vector2 { x: 0.0, y: 0.0 },
-      max_vel: Vector2 { x: 2.0, y: 5.0 },
-      speed: 0.0,
-      friction: 0.9,
-      gravity: 0.7,
-      max_jump: 15.0,
-      jump_force: -15.0,
-      transform: Transform::new(),
-      can_move: false,
-      can_jump: false,
-      is_grounded: false,
+    pub fn new() -> Self {
+        Self {
+            velocity: Vector2::new(0.0, 0.0),
+            on_ground: false,
+            max_jump_timer: 0.5, // Adjust as needed
+            movement_speed: 5.0,
+            max_movement_speed: 5.0,
+            gravity: 1.2,
+            max_fall_speed: 10.0,
+            friction: 0.5,
+            jump_power: 10.0,
+            jump_timer: 0.0,
+            jump_duration: 0.5,
+            jump_threshold: 1.2,
+        }
     }
-  }
 
-  pub fn set_can_move(&mut self, can_move: bool) {
-    self.can_move = can_move;
-  }
-
-  pub fn get_can_move(&self) -> bool {
-    self.can_move
-  }
-
-  pub fn accelerate(&mut self, dt: f64) {
-    self.acc.x += self.speed * dt;
-    self.acc.y = self.gravity;
-    self.vel += self.acc * dt;
-  }
-
-  pub fn acc_x_is_almost_zero(&self, precision: f64) -> bool {
-    self.acc.x >= -precision && self.acc.x <= precision
-  }
-
-  pub fn deccelerate(&mut self) {
-    self.vel.x *= self.friction;
-  }
-}
-
-impl PhysicsEvent for Physics {
-  fn walk(&mut self) {
-    self.speed = if self.transform.is_flip_x() {
-      -0.5
-    } else {
-      0.5
-    };
-  }
-
-  fn run(&mut self) {
-    self.speed = if self.transform.is_flip_x() { -1. } else { 1. };
-  }
-
-  fn jump(&mut self) {
-    if self.is_grounded {
-      self.vel.y += self.jump_force;
-      self.is_grounded = false;
+    pub fn vel_x_is_almost_zero(&self, precision: f64) -> bool {
+        self.velocity.x >= -precision && self.velocity.x <= precision
     }
-  }
 
-  fn stop(&mut self) {
-    self.speed = 0.0;
-  }
+    pub fn update(&mut self, dt: f64, input: &Controller) {
+        self.velocity.y += self.gravity;
 
-  fn update(&mut self, dt: f64) {
-    self.accelerate(dt);
+        let mut movement_force = 0.0;
+        if input.left {
+            movement_force = -1.0;
+        }
+        if input.right {
+            movement_force = 1.0;
+        }
+        self.velocity.x += movement_force * self.movement_speed;
 
-    self.deccelerate();
+        self.velocity.x = self
+            .velocity
+            .x
+            .clamp(-self.max_movement_speed, self.max_movement_speed);
 
-    self.transform.translate_y(self.vel.y * dt);
+        if input.jump && self.on_ground {
+            self.velocity.y = -self.jump_power;
+            self.on_ground = false;
+            self.jump_timer = 0.0;
+        } else if input.jump && self.jump_timer < self.jump_duration {
+            self.velocity.y -= self.jump_power * self.jump_threshold * dt;
+            self.jump_timer += dt;
+        }
 
-    self.acc *= 0.0;
-  }
+        if self.on_ground {
+            if self.velocity.x.abs() <= self.friction {
+                self.velocity.x = 0.0;
+            } else {
+                self.velocity.x -= (1.0 - self.friction) * self.velocity.x.signum();
+            }
+        }
+
+        self.velocity.y = self.velocity.y.min(self.max_fall_speed);
+    }
 }
