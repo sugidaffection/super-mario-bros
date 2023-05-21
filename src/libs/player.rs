@@ -1,4 +1,3 @@
-use cgmath::Vector2;
 use graphics::math::Matrix2d;
 use graphics::{Graphics, Transformed};
 use piston_window::{ButtonState, ImageSize, Key, Size};
@@ -93,8 +92,8 @@ where
         self.transform.set_position(x, y);
     }
 
-    pub fn get_position(&self) -> Vector2<f64> {
-        self.transform.get_position()
+    pub fn get_transform(&self) -> &Transform {
+        &self.transform
     }
 
     pub fn collide_with(&mut self, obj: &Object<I>) {

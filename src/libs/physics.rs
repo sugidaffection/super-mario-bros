@@ -70,9 +70,8 @@ impl Physics {
             if self.velocity.x.abs() <= self.friction {
                 self.velocity.x = 0.0;
             } else {
-                self.velocity.x -= self.friction * self.velocity.x.signum();
+                self.velocity.x -= (1.0 - self.friction) * self.velocity.x.signum();
             }
-            self.velocity.y = 0.0;
         }
 
         self.velocity.y = self.velocity.y.min(self.max_fall_speed);

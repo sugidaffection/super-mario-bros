@@ -1,7 +1,7 @@
 use cgmath::Vector2;
 use graphics::ImageSize;
 
-use super::player::Player;
+use super::{player::Player, transform::Rect};
 
 pub struct Camera {
     pub position: Vector2<f64>,
@@ -9,6 +9,7 @@ pub struct Camera {
     pub viewport_height: f64,
     pub world_width: f64,
     pub world_height: f64,
+    pub scale: f64,
 }
 
 impl Camera {
@@ -17,6 +18,7 @@ impl Camera {
         viewport_height: f64,
         world_width: f64,
         world_height: f64,
+        scale: f64,
     ) -> Self {
         Camera {
             position: Vector2::new(0.0, 0.0),
@@ -24,13 +26,14 @@ impl Camera {
             viewport_height,
             world_width,
             world_height,
+            scale,
         }
     }
 
     pub fn follow_player<I: ImageSize>(&mut self, player: &Player<I>) {
         // Calculate the camera's new position based on the player's position
-        let target_x = player.get_position().x - self.viewport_width / 2.0;
-        let target_y = player.get_position().y - self.viewport_height / 2.0;
+        let target_x = player.get_transform().xw() - self.viewport_width / 2.0;
+        let target_y = player.get_transform().yh() - self.viewport_height / 2.0;
 
         // Adjust the camera's position to stay within the game world boundaries
         if target_x < 0.0 {
