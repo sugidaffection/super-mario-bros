@@ -1,6 +1,4 @@
-use piston_window::{ButtonState, ImageSize, Key};
-
-use crate::libs::player::{Player, PlayerDirection};
+use piston_window::{ButtonState, Key};
 #[derive(Debug)]
 pub struct Controller {
     pub left: bool,

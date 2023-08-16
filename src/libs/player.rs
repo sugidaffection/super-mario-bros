@@ -2,6 +2,8 @@ use graphics::math::Matrix2d;
 use graphics::{Graphics, Transformed};
 use piston_window::{ButtonState, ImageSize, Key, Size};
 
+use crate::Sound;
+
 use super::collider::Side;
 use super::{
     collider::Collision,
@@ -43,7 +45,7 @@ impl<I> Player<I>
 where
     I: ImageSize,
 {
-    pub fn new(player_sprite_sheet: SpriteSheet<I>) -> Player<I> {
+    pub fn new() -> Player<I> {
         let mut player = Player {
             sprites: SpriteManager::new(),
             physics: Physics::new(),
@@ -52,15 +54,16 @@ where
             direction: PlayerDirection::Right,
             input: Controller::new(),
         };
-        player.set_sprite_sheet(player_sprite_sheet);
         player.set_animation();
         player.set_position(20.0, 20.0);
 
         player
     }
 
-    pub fn set_sprite_sheet(&mut self, sprite_sheet: SpriteSheet<I>) {
+    pub fn set_sprite_sheet(&mut self, sprite_sheet: SpriteSheet<I>, config: SpriteSheetConfig) {
         self.sprites.set_spritesheet(sprite_sheet);
+        self.sprites.add_config("default", config);
+        self.sprites.set_current_config("default");
     }
 
     pub fn set_animation(&mut self) {
@@ -71,21 +74,6 @@ where
 
     pub fn add_animation(&mut self, name: &'static str, animations: Vec<[usize; 2]>) {
         self.sprites.add_animation(name, animations);
-    }
-
-    pub fn add_config(&mut self, name: &'static str, config: SpriteSheetConfig) {
-        self.sprites.add_config(name, config);
-    }
-
-    pub fn set_current_config(&mut self, name: &'static str) {
-        self.sprites.set_current_config(name);
-    }
-
-    pub fn set_inside_window(&mut self, size: Size) {
-        if self.transform.x() < 0.0 {
-            let overlap: f64 = self.transform.x() - 0.0;
-            self.transform.translate_x(-overlap);
-        }
     }
 
     pub fn set_position(&mut self, x: f64, y: f64) {
@@ -118,6 +106,7 @@ where
                     let overlap = self.transform.y() - obj.get_transform().yh();
                     self.transform.translate(0.0, -overlap);
                     self.physics.velocity.y = 0.0;
+                    self.physics.can_jump = false;
                 }
                 Some(Side::BOTTOM) => {
                     // Resolve collision and prevent player from going beyond the bottom side of the screen
@@ -194,10 +183,27 @@ where
     }
 
     fn update(&mut self, dt: f64) {
-        self.physics.update(dt, &self.input);
+        if self.input.jump {
+            if self.physics.on_ground {
+                music::play_sound(&Sound::Jump, music::Repeat::Times(0), 0.2);
+            }
+            self.physics.jump(dt);
+        } else {
+            self.physics.can_jump = false;
+        }
+        let mut movement_force = 0.0;
+        if self.input.left {
+            movement_force = -1.0;
+        } else if self.input.right {
+            movement_force = 1.0;
+        } else {
+            movement_force = 0.0;
+        }
+        self.physics.set_force(movement_force, 0.0);
+        self.physics.update(dt);
         self.update_state();
         self.update_animation(dt);
         self.transform
-            .translate(self.physics.velocity.x, self.physics.velocity.y);
+            .translate(self.physics.velocity.x * dt, self.physics.velocity.y * dt);
     }
 }

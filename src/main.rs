@@ -36,7 +36,9 @@ enum Music {
 }
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq)]
-enum Sound {}
+enum Sound {
+    Jump,
+}
 
 pub struct Game {
     window: PistonWindow,
@@ -99,9 +101,8 @@ impl Game {
             grid: [21, 11],
             sprite_size: Size::from([16.0, 16.0]),
         };
-        let mut player = Player::new(player_sprite_sheet);
-        player.add_config("default", player_config_default);
-        player.set_current_config("default");
+        let mut player = Player::new();
+        player.set_sprite_sheet(player_sprite_sheet, player_config_default);
 
         player
     }
@@ -230,6 +231,7 @@ fn main() {
 
     music::start::<Music, Sound, _>(16, || {
         music::bind_music_file(Music::World1_1, "./assets/main_theme.mp3");
+        music::bind_sound_file(Sound::Jump, "./assets/jump.mp3");
         music::set_volume(music::MAX_VOLUME);
         music::play_music(&Music::World1_1, music::Repeat::Forever);
 

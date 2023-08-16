@@ -43,7 +43,7 @@ where
             sprite_sheet: None,
             animations: Vec::default(),
             sprite_configs: Vec::default(),
-            current_config_name: None,
+            current_config_name: Some("default"),
             current_animation_name: None,
         }
     }
