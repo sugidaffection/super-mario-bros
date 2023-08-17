@@ -46,18 +46,16 @@ where
     I: ImageSize,
 {
     pub fn new() -> Player<I> {
-        let mut player = Player {
+        let mut transform = Transform::new();
+        transform.set_position(20.0, 20.0);
+        Player {
             sprites: SpriteManager::new(),
             physics: Physics::new(),
             state: PlayerState::Jump,
-            transform: Transform::new(),
+            transform,
             direction: PlayerDirection::Right,
             input: Controller::new(),
-        };
-        player.set_animation();
-        player.set_position(20.0, 20.0);
-
-        player
+        }
     }
 
     pub fn set_sprite_sheet(&mut self, sprite_sheet: SpriteSheet<I>, config: SpriteSheetConfig) {
@@ -66,51 +64,41 @@ where
         self.sprites.set_current_config("default");
     }
 
-    pub fn set_animation(&mut self) {
-        self.add_animation("idle", vec![[0, 0]]);
-        self.add_animation("jump", vec![[0, 5]]);
-        self.add_animation("walk", vec![[0, 1], [0, 2], [0, 3]]);
-    }
-
     pub fn add_animation(&mut self, name: &'static str, animations: Vec<[usize; 2]>) {
         self.sprites.add_animation(name, animations);
-    }
-
-    pub fn set_position(&mut self, x: f64, y: f64) {
-        self.transform.set_position(x, y);
     }
 
     pub fn get_transform(&self) -> &Transform {
         &self.transform
     }
 
-    pub fn collide_with(&mut self, obj: &Object<I>) {
-        let (collide, side) = Collision::aabb(&self.transform, &obj.get_transform());
+    pub fn collide_with(&mut self, transform: &Transform) {
+        let (collide, side) = Collision::aabb(&self.transform, &transform);
 
         if collide {
             match side {
                 Some(Side::RIGHT) => {
                     // Resolve collision and prevent player from going beyond the right side of the screen
-                    let overlap = obj.get_transform().x() - self.transform.xw();
+                    let overlap = transform.x() - self.transform.xw();
                     self.transform.translate(overlap, 0.0);
                     self.physics.velocity.x = 0.0;
                 }
                 Some(Side::LEFT) => {
                     // Resolve collision and prevent player from going beyond the left side of the screen
-                    let overlap = self.transform.x() - obj.get_transform().xw();
+                    let overlap = self.transform.x() - transform.xw();
                     self.transform.translate(-overlap, 0.0);
                     self.physics.velocity.x = 0.0;
                 }
                 Some(Side::TOP) => {
                     // Resolve collision and prevent player from going beyond the top side of the screen
-                    let overlap = self.transform.y() - obj.get_transform().yh();
+                    let overlap = self.transform.y() - transform.yh();
                     self.transform.translate(0.0, -overlap);
                     self.physics.velocity.y = 0.0;
                     self.physics.can_jump = false;
                 }
                 Some(Side::BOTTOM) => {
                     // Resolve collision and prevent player from going beyond the bottom side of the screen
-                    let overlap = self.transform.yh() - obj.get_transform().y();
+                    let overlap = self.transform.yh() - transform.y();
                     self.transform.translate(0.0, -overlap);
                     self.physics.velocity.y = 0.0;
                     self.physics.on_ground = true;

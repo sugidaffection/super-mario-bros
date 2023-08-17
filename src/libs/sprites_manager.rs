@@ -31,13 +31,6 @@ impl<I> SpriteManager<I>
 where
     I: ImageSize,
 {
-    pub fn load_texture(mut context: &mut G2dTextureContext, p: &PathBuf) -> Rc<G2dTexture> {
-        let mut texture_settings = TextureSettings::new();
-        texture_settings.set_mag(Filter::Nearest);
-        let texture = Texture::from_path(&mut context, p, Flip::None, &texture_settings).unwrap();
-        Rc::new(texture)
-    }
-
     pub fn new() -> Self {
         Self {
             sprite_sheet: None,

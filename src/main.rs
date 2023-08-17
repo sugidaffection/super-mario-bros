@@ -3,8 +3,9 @@ use find_folder::Search;
 use fps_counter::FPSCounter;
 use graphics::Transformed;
 use piston_window::{
-    clear, Button, ButtonArgs, ButtonEvent, EventLoop, G2dTexture, G2dTextureContext, GenericEvent,
-    ImageSize, PistonWindow, RenderEvent, Size, UpdateEvent, WindowSettings,
+    clear, Button, ButtonArgs, ButtonEvent, EventLoop, Filter, Flip, G2dTexture, G2dTextureContext,
+    GenericEvent, ImageSize, PistonWindow, RenderEvent, Size, Texture, TextureSettings,
+    UpdateEvent, WindowSettings,
 };
 use serde_json::{from_reader, Value};
 use std::fs::File;
@@ -26,7 +27,6 @@ mod libs {
 use libs::camera::Camera;
 use libs::object::{Object, Object2D};
 use libs::player::Player;
-use libs::sprites_manager::SpriteManager;
 use libs::spritesheet::{SpriteSheet, SpriteSheetConfig};
 use libs::transform::{Rect, Trans};
 
@@ -45,6 +45,7 @@ pub struct Game {
     size: Size,
     camera: Camera,
     player: Player<G2dTexture>,
+    player2: Player<G2dTexture>,
     tilemap: SpriteSheet<G2dTexture>,
     objects: Vec<Object<G2dTexture>>,
 }
@@ -62,7 +63,12 @@ impl Game {
         let map_size = map_texture.get_size();
         let tilemap = SpriteSheet::new(map_texture);
 
-        let player = Self::load_player(&mut context);
+        let player_texture = Self::load_texture(&mut context, "player.png");
+        let mut player = Self::load_player(Rc::clone(&player_texture));
+        Self::load_mario(&mut player);
+
+        let mut player2 = Self::load_player(Rc::clone(&player_texture));
+        Self::load_luigi(&mut player2);
 
         let camera = Camera::new(
             viewport_size.width,
@@ -79,6 +85,7 @@ impl Game {
             size,
             camera,
             player,
+            player2,
             tilemap,
             objects,
         };
@@ -89,22 +96,38 @@ impl Game {
     fn load_texture(context: &mut G2dTextureContext, path: &'static str) -> Rc<G2dTexture> {
         let assets = Search::Parents(1).for_folder("assets").unwrap();
         let path = assets.join(path);
-        SpriteManager::<G2dTexture>::load_texture(context, &path)
+
+        let mut texture_settings = TextureSettings::new();
+        texture_settings.set_mag(Filter::Nearest);
+        let texture = Texture::from_path(context, path, Flip::None, &texture_settings).unwrap();
+        Rc::new(texture)
     }
 
-    fn load_player(context: &mut G2dTextureContext) -> Player<G2dTexture> {
-        let player_texture = Self::load_texture(context, "player.png");
-        let player_sprite_sheet = SpriteSheet::new(player_texture);
+    fn load_player(texture: Rc<G2dTexture>) -> Player<G2dTexture> {
+        let player_sprite_sheet = SpriteSheet::new(texture);
         let player_config_default = SpriteSheetConfig {
             offset: Vector2::from([80.0, 34.0]),
             spacing: Vector2::from([1.0, 47.0]),
             grid: [21, 11],
             sprite_size: Size::from([16.0, 16.0]),
         };
+
         let mut player = Player::new();
         player.set_sprite_sheet(player_sprite_sheet, player_config_default);
 
         player
+    }
+
+    fn load_mario(player: &mut Player<G2dTexture>) {
+        player.add_animation("idle", vec![[0, 0]]);
+        player.add_animation("jump", vec![[0, 5]]);
+        player.add_animation("walk", vec![[0, 1], [0, 2], [0, 3]]);
+    }
+
+    fn load_luigi(player: &mut Player<G2dTexture>) {
+        player.add_animation("idle", vec![[1, 0]]);
+        player.add_animation("jump", vec![[1, 5]]);
+        player.add_animation("walk", vec![[1, 1], [1, 2], [1, 3]]);
     }
 
     fn load_objects() -> Vec<Object<G2dTexture>> {
@@ -158,6 +181,7 @@ impl Game {
         let translate_y = (window_size.height - scaled_height) / (2.0 * camera.scale);
 
         let player = &mut self.player;
+        let player2 = &mut self.player2;
         let objects = &mut self.objects;
 
         let tilemap = &mut self.tilemap;
@@ -199,14 +223,19 @@ impl Game {
             }
 
             player.draw(transform, g);
+            player2.draw(transform, g);
         });
     }
 
     pub fn update(&mut self, dt: f64) {
         self.player.update(dt);
+        self.player2.update(dt);
+
+        self.player2.collide_with(self.player.get_transform());
 
         for object in self.objects.iter() {
-            self.player.collide_with(object);
+            self.player.collide_with(&object.get_transform());
+            self.player2.collide_with(&object.get_transform());
         }
 
         self.camera.follow_player(&self.player);
