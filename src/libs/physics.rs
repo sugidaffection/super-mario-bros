@@ -50,15 +50,18 @@ impl Physics {
             .clamp(-self.max_velocity.y, self.max_velocity.y);
     }
 
-    pub fn jump(&mut self, dt: f64) {
+    pub fn jump(&mut self) {
         if self.on_ground {
             self.jump_duration = 0.0;
             self.can_jump = true;
         }
-        if self.jump_duration >= self.jump_max_duration {
-            self.jump_duration = 0.0;
+
+        if self.velocity.y > 0.0 || self.jump_duration >= self.jump_max_duration {
             self.can_jump = false;
         }
+    }
+
+    pub fn apply_jump(&mut self, dt: f64) {
         if self.can_jump && self.jump_duration < self.jump_max_duration {
             let jump_strength = if self.jump_duration == 0.0 {
                 1.0
@@ -109,5 +112,6 @@ impl Physics {
     pub fn update(&mut self, dt: f64) {
         self.apply_gravity(dt);
         self.apply_horizontal_movement(dt);
+        self.apply_jump(dt);
     }
 }

@@ -132,19 +132,7 @@ where
     }
 
     pub fn update_input(&mut self, key: Key, state: ButtonState) {
-        if state == ButtonState::Press {
-            if key == Key::Left {
-                self.direction = PlayerDirection::Left;
-                self.state = PlayerState::Walk;
-            }
-
-            if key == Key::Right {
-                self.direction = PlayerDirection::Right;
-                self.state = PlayerState::Walk;
-            }
-        }
-
-        self.input.keyboard_event(key, state)
+        self.input.keyboard_event(key, state);
     }
 
     fn update_state(&mut self) {
@@ -152,9 +140,35 @@ where
             self.state = PlayerState::Idle;
         } else if self.physics.on_ground {
             self.state = PlayerState::Walk;
-        } else {
-            self.state = PlayerState::Jump;
         }
+    }
+
+    fn move_left(&mut self) {
+        self.direction = PlayerDirection::Left;
+        self.physics.set_force(-1.0, 0.0);
+        if self.state == PlayerState::Walk || self.state == PlayerState::Idle {
+            self.state = PlayerState::Walk;
+        }
+    }
+
+    fn move_right(&mut self) {
+        self.direction = PlayerDirection::Right;
+        self.physics.set_force(1.0, 0.0);
+        if self.state == PlayerState::Walk || self.state == PlayerState::Idle {
+            self.state = PlayerState::Walk;
+        }
+    }
+
+    fn stop(&mut self) {
+        self.physics.set_force(0.0, 0.0);
+    }
+
+    fn jump(&mut self) {
+        self.state = PlayerState::Jump;
+        if self.physics.on_ground {
+            music::play_sound(&Sound::Jump, music::Repeat::Times(0), 0.2);
+        }
+        self.physics.jump();
     }
 }
 impl<I> Object2D<I> for Player<I>
@@ -171,23 +185,31 @@ where
     }
 
     fn update(&mut self, dt: f64) {
+        if self.input.left {
+            self.move_left();
+        }
+
+        if self.input.right {
+            self.move_right();
+        }
+
+        if !self.input.right && !self.input.left {
+            self.stop();
+        }
+
         if self.input.jump {
-            if self.physics.on_ground {
-                music::play_sound(&Sound::Jump, music::Repeat::Times(0), 0.2);
-            }
-            self.physics.jump(dt);
+            self.jump();
         } else {
             self.physics.can_jump = false;
         }
-        let mut movement_force = 0.0;
-        if self.input.left {
-            movement_force = -1.0;
-        } else if self.input.right {
-            movement_force = 1.0;
-        } else {
-            movement_force = 0.0;
+
+        if self.state == PlayerState::Jump && self.physics.velocity.y > 0.0 {
+            self.state = PlayerState::Fall;
         }
-        self.physics.set_force(movement_force, 0.0);
+        if self.physics.velocity.y == 0.0 && self.state != PlayerState::Walk {
+            self.state = PlayerState::Idle;
+        }
+
         self.physics.update(dt);
         self.update_state();
         self.update_animation(dt);
