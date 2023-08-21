@@ -126,6 +126,7 @@ impl Game {
         player.add_animation("idle", vec![[0, 0]]);
         player.add_animation("jump", vec![[0, 5]]);
         player.add_animation("walk", vec![[0, 1], [0, 2], [0, 3]]);
+        player.add_animation("skid", vec![[0, 4]]);
     }
 
     fn load_luigi(player: &mut Player<G2dTexture>) {
@@ -263,7 +264,7 @@ impl Game {
 
     pub fn update(&mut self, dt: f64) {
         self.player.update(dt);
-        self.player2.update(dt);
+        // self.player2.update(dt);
 
         for object in self.objects.iter() {
             self.player.collide_with(&object.get_transform());

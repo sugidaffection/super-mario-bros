@@ -10,9 +10,9 @@ pub enum Side {
 
 pub struct Collision {}
 impl Collision {
-    pub fn aabb(rect1: &Transform, rect2: &Transform) -> (bool, Option<Side>) {
+    pub fn aabb(rect1: &Transform, rect2: &Transform) -> Option<Side> {
         if !Collision::check_overlap(rect1, rect2) {
-            return (false, None);
+            return None;
         }
 
         let overlap_left = Collision::calculate_overlap(rect2.xw(), rect1.x());
@@ -26,11 +26,11 @@ impl Collision {
         );
 
         match min_overlap {
-            overlap if overlap == overlap_left => (true, Some(Side::LEFT)),
-            overlap if overlap == overlap_right => (true, Some(Side::RIGHT)),
-            overlap if overlap == overlap_top => (true, Some(Side::TOP)),
-            overlap if overlap == overlap_bottom => (true, Some(Side::BOTTOM)),
-            _ => (false, None),
+            overlap if overlap == overlap_left => Some(Side::LEFT),
+            overlap if overlap == overlap_right => Some(Side::RIGHT),
+            overlap if overlap == overlap_top => Some(Side::TOP),
+            overlap if overlap == overlap_bottom => Some(Side::BOTTOM),
+            _ => None,
         }
     }
 

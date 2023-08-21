@@ -21,19 +21,19 @@ impl Physics {
     pub fn new() -> Self {
         Self {
             velocity: Vector2::new(0.0, 0.0),
-            max_velocity: Vector2::new(80.0, 400.0),
+            max_velocity: Vector2::new(100.0, 400.0),
             on_ground: false,
-            movement_speed: 300.0,
+            movement_speed: 500.0,
             gravity: 1.2,
-            friction: 0.5,
+            friction: 0.6,
             jump_power: 200.0,
             jump_duration: 0.0,
-            jump_max_duration: 0.8,
+            jump_max_duration: 0.7,
             can_jump: false,
             force: Vector2::new(0.0, 0.0),
-            mass: 400.0,
-            deceleration: 80.0,
-            skid_factor: 0.9,
+            mass: 450.0,
+            deceleration: 120.0,
+            skid_factor: 1.08,
         }
     }
 

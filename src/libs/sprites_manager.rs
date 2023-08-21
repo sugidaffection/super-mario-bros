@@ -50,7 +50,8 @@ where
     }
 
     pub fn add_animation(&mut self, name: &'static str, animations: Vec<[usize; 2]>) {
-        let an = SpriteAnimation::new(name, animations);
+        let mut an = SpriteAnimation::new(name, animations);
+        an.set_animation_interval(0.2);
         self.animations.push(an);
     }
 

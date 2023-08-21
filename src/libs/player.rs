@@ -75,47 +75,43 @@ where
     }
 
     pub fn collide_with(&mut self, transform: &Transform) {
-        let (collide, side) = Collision::aabb(&self.transform, &transform);
+        let side = Collision::aabb(&self.transform, &transform);
 
-        if collide {
-            match side {
-                Some(Side::RIGHT) => {
-                    // Resolve collision and prevent player from going beyond the right side of the screen
-                    let overlap = transform.x() - self.transform.xw();
-                    self.transform.translate(overlap, 0.0);
-                    self.physics.velocity.x = 0.0;
-                }
-                Some(Side::LEFT) => {
-                    // Resolve collision and prevent player from going beyond the left side of the screen
-                    let overlap = self.transform.x() - transform.xw();
-                    self.transform.translate(-overlap, 0.0);
-                    self.physics.velocity.x = 0.0;
-                }
-                Some(Side::TOP) => {
-                    // Resolve collision and prevent player from going beyond the top side of the screen
-                    let overlap = self.transform.y() - transform.yh();
-                    self.transform.translate(0.0, -overlap);
-                    self.physics.velocity.y = 0.0;
-                    self.physics.can_jump = false;
-                }
-                Some(Side::BOTTOM) => {
-                    // Resolve collision and prevent player from going beyond the bottom side of the screen
-                    let overlap = self.transform.yh() - transform.y();
-                    self.transform.translate(0.0, -overlap);
-                    self.physics.velocity.y = 0.0;
-                    self.physics.on_ground = true;
-                }
-                None => {}
+        match side {
+            Some(Side::RIGHT) => {
+                let overlap = transform.x() - self.transform.xw();
+                self.transform.translate(overlap, 0.0);
+                self.physics.velocity.x = 0.0;
             }
+            Some(Side::LEFT) => {
+                let overlap = self.transform.x() - transform.xw();
+                self.transform.translate(-overlap, 0.0);
+                self.physics.velocity.x = 0.0;
+            }
+            Some(Side::TOP) => {
+                // Resolve collision and prevent player from going beyond the top side of the screen
+                let overlap = self.transform.y() - transform.yh();
+                self.transform.translate(0.0, -overlap);
+                self.physics.velocity.y = 0.0;
+                self.physics.can_jump = false;
+            }
+            Some(Side::BOTTOM) => {
+                // Resolve collision and prevent player from going beyond the bottom side of the screen
+                let overlap = self.transform.yh() - transform.y();
+                self.transform.translate(0.0, -overlap);
+                self.physics.velocity.y = 0.0;
+                self.physics.on_ground = true;
+            }
+            None => {}
         }
     }
 
     pub fn update_animation(&mut self, dt: f64) {
         self.transform
             .set_flip_x(self.direction == PlayerDirection::Left);
-
         match self.state {
             PlayerState::Idle => self.sprites.play_animation("idle"),
+            PlayerState::Skid => self.sprites.play_animation("skid"),
             PlayerState::Walk => {
                 if self.physics.on_ground {
                     self.sprites.play_animation("walk")
@@ -136,26 +132,41 @@ where
     }
 
     fn update_state(&mut self) {
-        if self.physics.on_ground && self.physics.vel_x_is_almost_zero(0.01) {
+        if self.state == PlayerState::Jump
+            && self.physics.velocity.y > 0.0
+            && !self.physics.on_ground
+        {
+            self.state = PlayerState::Fall;
+        }
+        if self.physics.on_ground
+            && (![PlayerState::Walk, PlayerState::Skid].contains(&self.state)
+                || [PlayerState::Walk, PlayerState::Skid].contains(&self.state)
+                    && self.physics.vel_x_is_almost_zero(0.1))
+        {
             self.state = PlayerState::Idle;
-        } else if self.physics.on_ground {
-            self.state = PlayerState::Walk;
         }
     }
 
     fn move_left(&mut self) {
         self.direction = PlayerDirection::Left;
         self.physics.set_force(-1.0, 0.0);
-        if self.state == PlayerState::Walk || self.state == PlayerState::Idle {
+        if [PlayerState::Walk, PlayerState::Idle, PlayerState::Skid].contains(&self.state) {
             self.state = PlayerState::Walk;
+            if self.physics.velocity.x > 0.0 {
+                self.state = PlayerState::Skid;
+            }
         }
     }
 
     fn move_right(&mut self) {
         self.direction = PlayerDirection::Right;
         self.physics.set_force(1.0, 0.0);
-        if self.state == PlayerState::Walk || self.state == PlayerState::Idle {
+        if [PlayerState::Walk, PlayerState::Idle, PlayerState::Skid].contains(&self.state) {
             self.state = PlayerState::Walk;
+
+            if self.physics.velocity.x < 0.0 {
+                self.state = PlayerState::Skid;
+            }
         }
     }
 
@@ -202,14 +213,6 @@ where
         } else {
             self.physics.can_jump = false;
         }
-
-        if self.state == PlayerState::Jump && self.physics.velocity.y > 0.0 {
-            self.state = PlayerState::Fall;
-        }
-        if self.physics.velocity.y == 0.0 && self.state != PlayerState::Walk {
-            self.state = PlayerState::Idle;
-        }
-
         self.physics.update(dt);
         self.update_state();
         self.update_animation(dt);
