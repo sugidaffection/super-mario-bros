@@ -5,7 +5,7 @@ use graphics::Transformed;
 use piston_window::{
     clear, Button, ButtonArgs, ButtonEvent, EventLoop, Filter, Flip, G2dTexture, G2dTextureContext,
     GenericEvent, ImageSize, PistonWindow, RenderEvent, Size, Texture, TextureSettings,
-    UpdateEvent, WindowSettings,
+    UpdateEvent, Window, WindowSettings,
 };
 use serde_json::{from_reader, Value};
 use sprite::Sprite;
@@ -78,7 +78,7 @@ impl Game {
             viewport_size.height,
             map_size.0.into(),
             map_size.1 as f64,
-            3.0,
+            window.draw_size().height as f64 / map_size.1 as f64,
         );
 
         let tileset_texture = Self::load_texture(&mut context, "tileset1.png");
@@ -245,21 +245,25 @@ impl Game {
                 .transform;
             for object in objects.iter_mut() {
                 let obj = object.get_transform();
-                if obj.x() < camera.world_width && obj.xw() >= 0.0 {
+                if obj.x() < camera.position.x + camera.viewport_width
+                    && obj.xw() >= camera.position.x
+                {
                     object.draw(transform, g);
                 }
             }
 
             player.draw(transform, g);
-            player2.draw(transform, g);
+            if player2.get_transform().x() < camera.position.x + camera.viewport_width
+                && player2.get_transform().xw() >= camera.position.x
+            {
+                player2.draw(transform, g);
+            }
         });
     }
 
     pub fn update(&mut self, dt: f64) {
         self.player.update(dt);
         self.player2.update(dt);
-
-        self.player2.collide_with(self.player.get_transform());
 
         for object in self.objects.iter() {
             self.player.collide_with(&object.get_transform());
