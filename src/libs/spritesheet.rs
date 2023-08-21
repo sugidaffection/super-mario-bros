@@ -3,7 +3,10 @@ use graphics::math::Matrix2d;
 use graphics::Graphics;
 use piston_window::{ImageSize, Size};
 use sprite::Sprite;
-use std::rc::Rc;
+use std::{
+    cell::{Cell, RefCell},
+    rc::Rc,
+};
 
 pub struct SpriteSheetConfig {
     pub grid: [usize; 2],
@@ -27,7 +30,7 @@ impl<I: ImageSize> SpriteSheet<I> {
         sprite.set_anchor(0.0, 0.0);
 
         let mut sprite = Self {
-            sprite: sprite,
+            sprite,
             grid: [1, 1],
             sprite_size: Size::from(size),
             spacing: Vector2::from([0.0, 0.0]),
@@ -55,6 +58,13 @@ impl<I: ImageSize> SpriteSheet<I> {
         }
     }
 
+    pub fn clone_sprite(&mut self) -> Sprite<I> {
+        let rect = self.sprite.get_src_rect().unwrap();
+        let mut sprite = Sprite::from_texture(self.sprite.get_texture().clone());
+        sprite.set_src_rect(rect);
+        sprite
+    }
+
     pub fn set_current_tiles(&mut self, mut row: usize, mut col: usize) {
         row %= self.grid[0];
         col %= self.grid[1];
@@ -70,8 +80,12 @@ impl<I: ImageSize> SpriteSheet<I> {
         self.sprite.set_src_rect(src_rect);
     }
 
-    pub fn get_sprite(&mut self) -> Option<&mut Sprite<I>> {
-        Some(&mut self.sprite)
+    pub fn set_flip_x(&mut self, value: bool) {
+        self.sprite.set_flip_x(value);
+    }
+
+    pub fn set_src_rect(&mut self, rect: [f64; 4]) {
+        self.sprite.set_src_rect(rect);
     }
 
     pub fn draw<B: Graphics<Texture = I>>(&self, t: Matrix2d, b: &mut B) {

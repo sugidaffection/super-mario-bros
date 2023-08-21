@@ -1,8 +1,11 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use crate::libs::transform::{Rect, Trans, Transform};
 use cgmath::Vector2;
 use graphics::math::Matrix2d;
 use graphics::{Graphics, Transformed};
-use piston_window::{rectangle, DrawState, ImageSize, Rectangle, Size};
+use piston_window::{rectangle, DrawState, G2dTexture, ImageSize, Rectangle, Size};
 use sprite::{Scene, Sprite};
 
 pub trait Object2D<I: ImageSize> {
@@ -11,21 +14,23 @@ pub trait Object2D<I: ImageSize> {
 }
 
 pub struct Object<I: ImageSize> {
+    pub name: String,
     color: [f32; 4],
     border: bool,
     transparent: bool,
     solid: bool,
     transform: Transform,
     scene: Option<Scene<I>>,
-    sprite: Option<Sprite<I>>,
+    sprite: Option<Rc<RefCell<Sprite<I>>>>,
 }
 
 impl<I> Object<I>
 where
     I: ImageSize,
 {
-    pub fn new() -> Object<I> {
+    pub fn new(name: String) -> Object<I> {
         Object {
+            name,
             color: [1.0, 1.0, 1.0, 1.0],
             border: false,
             transparent: true,
@@ -60,7 +65,7 @@ where
         self.scene = Some(scene);
     }
 
-    pub fn set_sprite(&mut self, sprite: Sprite<I>) {
+    pub fn set_sprite(&mut self, sprite: Rc<RefCell<Sprite<I>>>) {
         self.sprite = Some(sprite);
     }
 
@@ -74,6 +79,7 @@ where
 impl<I: ImageSize> Default for Object<I> {
     fn default() -> Self {
         Self {
+            name: "".to_string(),
             color: [1.0, 1.0, 1.0, 1.0],
             border: false,
             transparent: true,
@@ -104,8 +110,8 @@ where
         }
         let scale = self.get_scale();
         if let Some(sprite) = self.sprite.as_mut() {
-            sprite.set_scale(scale.x, scale.y);
-            sprite.draw(
+            sprite.borrow_mut().set_scale(scale.x, scale.y);
+            sprite.borrow().draw(
                 t.trans(self.transform.center_xw(), self.transform.center_yh()),
                 b,
             )

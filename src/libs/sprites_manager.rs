@@ -7,8 +7,8 @@ use piston_window::{
     Filter, Flip, G2dTexture, G2dTextureContext, Graphics, ImageSize, Texture, TextureSettings,
 };
 use sprite::Sprite;
-use std::path::PathBuf;
-use std::rc::Rc;
+use std::{borrow::BorrowMut, rc::Rc};
+use std::{cell::RefCell, path::PathBuf};
 
 pub trait SpriteManagerFn<I: ImageSize> {
     fn set_sprite_sheet(&mut self, sprite_sheet: SpriteSheet<I>);
@@ -45,11 +45,8 @@ where
         self.sprite_sheet = Some(sprite_sheet);
     }
 
-    pub fn get_sprite(&mut self) -> Option<&mut Sprite<I>> {
-        if let Some(sprite_sheet) = &mut self.sprite_sheet {
-            return sprite_sheet.get_sprite();
-        }
-        None
+    pub fn set_flip_x(&mut self, value: bool) {
+        self.sprite_sheet.as_mut().unwrap().set_flip_x(value);
     }
 
     pub fn add_animation(&mut self, name: &'static str, animations: Vec<[usize; 2]>) {

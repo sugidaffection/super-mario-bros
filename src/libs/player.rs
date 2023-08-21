@@ -1,3 +1,5 @@
+use std::borrow::BorrowMut;
+
 use graphics::math::Matrix2d;
 use graphics::{Graphics, Transformed};
 use piston_window::{ButtonState, ImageSize, Key, Size};
@@ -124,9 +126,7 @@ where
             _ => {}
         }
 
-        if let Some(sprite) = self.sprites.get_sprite() {
-            sprite.set_flip_x(self.transform.is_flip_x());
-        }
+        self.sprites.set_flip_x(self.transform.is_flip_x());
 
         self.sprites.update(dt);
     }
@@ -165,10 +165,10 @@ where
 
     fn jump(&mut self) {
         self.state = PlayerState::Jump;
-        if self.physics.on_ground {
+        self.physics.jump();
+        if self.physics.on_ground && self.physics.can_jump {
             music::play_sound(&Sound::Jump, music::Repeat::Times(0), 0.2);
         }
-        self.physics.jump();
     }
 }
 impl<I> Object2D<I> for Player<I>

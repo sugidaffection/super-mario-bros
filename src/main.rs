@@ -8,7 +8,10 @@ use piston_window::{
     UpdateEvent, WindowSettings,
 };
 use serde_json::{from_reader, Value};
+use sprite::Sprite;
+use std::cell::RefCell;
 use std::fs::File;
+use std::path;
 use std::rc::Rc;
 
 mod libs {
@@ -55,11 +58,11 @@ impl Game {
             .exit_on_esc(true)
             .build()
             .unwrap_or_else(|e| panic!("Failed to build PistonWindow: {}", e));
-        window.set_ups(30);
+        window.set_ups(60);
 
         let mut context = window.create_texture_context();
 
-        let map_texture = Self::load_texture(&mut context, "world_1.png");
+        let map_texture = Self::load_texture(&mut context, "world_1_1.png");
         let map_size = map_texture.get_size();
         let tilemap = SpriteSheet::new(map_texture);
 
@@ -78,7 +81,8 @@ impl Game {
             3.0,
         );
 
-        let objects = Self::load_objects();
+        let tileset_texture = Self::load_texture(&mut context, "tileset1.png");
+        let objects = Self::load_objects(tileset_texture);
 
         let game = Self {
             window,
@@ -130,7 +134,20 @@ impl Game {
         player.add_animation("walk", vec![[1, 1], [1, 2], [1, 3]]);
     }
 
-    fn load_objects() -> Vec<Object<G2dTexture>> {
+    fn load_objects(texture: Rc<G2dTexture>) -> Vec<Object<G2dTexture>> {
+        let mut tileset = SpriteSheet::new(texture.clone());
+        let tileset_config = SpriteSheetConfig {
+            offset: Vector2::from([0.0, 0.0]),
+            spacing: Vector2::from([0.0, 0.0]),
+            grid: [1, 2],
+            sprite_size: Size::from([16.0, 16.0]),
+        };
+        tileset.set_config(&tileset_config);
+        tileset.set_current_tiles(0, 0);
+        let brick_sprite = Rc::new(RefCell::new(tileset.clone_sprite()));
+        tileset.set_current_tiles(0, 1);
+        let coin_sprite = Rc::new(RefCell::new(tileset.clone_sprite()));
+
         let assets = Search::Parents(1).for_folder("assets").unwrap();
         let path = assets.join("world_1_1.tmj");
         let file = File::open(path).unwrap();
@@ -142,14 +159,22 @@ impl Game {
             .unwrap()
             .as_array()
             .unwrap();
-        let solid_objects: &Vec<Value> = layers
+
+        let solid_objects: Vec<Value> = layers
             .iter()
-            .find(|x| x.get("name").unwrap() == "solid_objects")
-            .unwrap()
-            .get("objects")
-            .unwrap()
-            .as_array()
-            .unwrap();
+            .flat_map(|x| {
+                if ["ground", "solid_objects", "bricks", "pipes"]
+                    .contains(&x.get("name")?.as_str()?)
+                {
+                    x.get("objects")
+                        .and_then(|objects| objects.as_array())
+                        .map(|x| x.to_vec())
+                } else {
+                    None
+                }
+            })
+            .flatten()
+            .collect();
 
         let mut objects: Vec<Object<G2dTexture>> = Vec::default();
         for obj in solid_objects {
@@ -158,9 +183,17 @@ impl Game {
             let y = json_obj.get("y").unwrap().as_f64().unwrap();
             let w = json_obj.get("width").unwrap().as_f64().unwrap();
             let h = json_obj.get("height").unwrap().as_f64().unwrap();
-            let mut o = Object::<G2dTexture>::new();
+            let name = json_obj.get("name").unwrap().as_str().unwrap().to_string();
+            let mut o = Object::<G2dTexture>::new(name.clone());
             o.set_size(w, h);
             o.set_position(x, y);
+            if name.to_string().trim() == "brick".to_string().trim() {
+                o.set_sprite(Rc::clone(&brick_sprite));
+            }
+
+            if name.to_string().trim() == "coin".to_string().trim() {
+                o.set_sprite(Rc::clone(&coin_sprite));
+            }
             objects.push(o);
         }
 
@@ -186,12 +219,7 @@ impl Game {
 
         let tilemap = &mut self.tilemap;
 
-        tilemap.get_sprite().unwrap().set_src_rect([
-            camera.position.x.max(0.0),
-            0.0,
-            camera_width,
-            camera_height,
-        ]);
+        tilemap.set_src_rect([camera.position.x.max(0.0), 0.0, camera_width, camera_height]);
 
         self.window.draw_2d(e, |_, g, _d| {
             clear([0.0, 0.0, 0.0, 0.5], g);
@@ -217,7 +245,7 @@ impl Game {
                 .transform;
             for object in objects.iter_mut() {
                 let obj = object.get_transform();
-                if obj.x() < window_size.width && obj.xw() >= 0.0 {
+                if obj.x() < camera.world_width && obj.xw() >= 0.0 {
                     object.draw(transform, g);
                 }
             }
