@@ -81,6 +81,12 @@ where
         }
     }
 
+    pub fn set_animation_interval(&mut self, interval: f64, name: &'static str) {
+        if let Some(animation) = self.animations.iter_mut().find(|x| x.name == name) {
+            animation.set_animation_interval(interval);
+        }
+    }
+
     pub fn stop_animation(&mut self) {
         self.animations.iter_mut().for_each(|x| {
             x.stop();

@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::libs::transform::{Rect, Trans, Transform};
+use crate::Sound;
 use cgmath::Vector2;
 use graphics::math::Matrix2d;
 use graphics::{Graphics, Transformed};
@@ -22,6 +23,7 @@ pub struct Object<I: ImageSize> {
     transform: Transform,
     scene: Option<Scene<I>>,
     sprite: Option<Rc<RefCell<Sprite<I>>>>,
+    destroyed: bool,
 }
 
 impl<I> Object<I>
@@ -38,6 +40,7 @@ where
             transform: Transform::new(),
             scene: None,
             sprite: None,
+            destroyed: false,
         }
     }
 
@@ -74,6 +77,25 @@ where
             scene.running();
         }
     }
+
+    pub fn destroy(&mut self) {
+        if self.name == "brick" {
+            self.destroyed = true;
+            music::play_sound(&Sound::Brick, music::Repeat::Times(0), 1.0);
+        } else {
+            self.coin();
+        }
+    }
+
+    pub fn coin(&mut self) {
+        if self.name == "coin" {
+            music::play_sound(&Sound::Coin, music::Repeat::Times(0), 1.0);
+        }
+    }
+
+    pub fn is_destroyed(&self) -> bool {
+        self.destroyed
+    }
 }
 
 impl<I: ImageSize> Default for Object<I> {
@@ -87,6 +109,7 @@ impl<I: ImageSize> Default for Object<I> {
             transform: Transform::new(),
             scene: None,
             sprite: None,
+            destroyed: false,
         }
     }
 }
@@ -109,12 +132,14 @@ where
             }
         }
         let scale = self.get_scale();
-        if let Some(sprite) = self.sprite.as_mut() {
-            sprite.borrow_mut().set_scale(scale.x, scale.y);
-            sprite.borrow().draw(
-                t.trans(self.transform.center_xw(), self.transform.center_yh()),
-                b,
-            )
+        if !self.destroyed {
+            if let Some(sprite) = self.sprite.as_mut() {
+                sprite.borrow_mut().set_scale(scale.x, scale.y);
+                sprite.borrow().draw(
+                    t.trans(self.transform.center_xw(), self.transform.center_yh()),
+                    b,
+                )
+            }
         }
     }
 

@@ -74,7 +74,7 @@ where
         &self.transform
     }
 
-    pub fn collide_with(&mut self, transform: &Transform) {
+    pub fn collide_with(&mut self, transform: &Transform) -> Option<Side> {
         let side = Collision::aabb(&self.transform, &transform);
 
         match side {
@@ -104,6 +104,8 @@ where
             }
             None => {}
         }
+
+        return side;
     }
 
     pub fn update_animation(&mut self, dt: f64) {
@@ -118,7 +120,20 @@ where
                 }
             }
             PlayerState::Run => self.sprites.play_animation("run"),
-            PlayerState::Jump => self.sprites.play_animation("jump"),
+            PlayerState::Jump => {
+                if self.input.right || self.input.left {
+                    self.sprites.play_animation("jump-right")
+                } else {
+                    self.sprites.play_animation("jump")
+                }
+            }
+            PlayerState::Fall => {
+                if self.input.right || self.input.left {
+                    self.sprites.play_animation("fall")
+                } else {
+                    self.sprites.play_animation("jump");
+                }
+            }
             _ => {}
         }
 
@@ -132,10 +147,7 @@ where
     }
 
     fn update_state(&mut self) {
-        if self.state == PlayerState::Jump
-            && self.physics.velocity.y > 0.0
-            && !self.physics.on_ground
-        {
+        if self.physics.velocity.y > 0.0 && !self.physics.on_ground {
             self.state = PlayerState::Fall;
         }
         if self.physics.on_ground
@@ -181,6 +193,15 @@ where
             music::play_sound(&Sound::Jump, music::Repeat::Times(0), 0.2);
         }
     }
+
+    pub fn respawn_player_if_overflow(&mut self, max_y: f64) {
+        let position = self.transform.get_position();
+        if position.y > max_y {
+            self.transform.set_position_y(20.0);
+            self.physics.velocity.y = 0.0;
+            self.physics.on_ground = false;
+        }
+    }
 }
 impl<I> Object2D<I> for Player<I>
 where
@@ -202,6 +223,14 @@ where
 
         if self.input.right {
             self.move_right();
+        }
+
+        if self.input.run {
+            self.physics.run();
+            self.sprites.set_animation_interval(0.1, "walk");
+        } else {
+            self.physics.walk();
+            self.sprites.set_animation_interval(0.2, "walk");
         }
 
         if !self.input.right && !self.input.left {

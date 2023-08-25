@@ -61,6 +61,14 @@ impl Physics {
         }
     }
 
+    pub fn run(&mut self) {
+        self.max_velocity.x = 120.0;
+    }
+
+    pub fn walk(&mut self) {
+        self.max_velocity.x = 100.0;
+    }
+
     pub fn apply_jump(&mut self, dt: f64) {
         if self.can_jump && self.jump_duration < self.jump_max_duration {
             let jump_strength = if self.jump_duration == 0.0 {
@@ -86,10 +94,10 @@ impl Physics {
             }
         } else if self.force.x > 0.0 {
             let friction = self.friction * self.velocity.x.abs() * dt;
-            self.velocity.x -= friction;
+            self.velocity.x -= friction * dt;
         } else if self.force.x < 0.0 {
             let friction = self.friction * self.velocity.x.abs() * dt;
-            self.velocity.x += friction;
+            self.velocity.x += friction * dt;
         }
 
         self.velocity.x = self

@@ -2,6 +2,7 @@ use cgmath::Vector2;
 use find_folder::Search;
 use fps_counter::FPSCounter;
 use graphics::Transformed;
+use libs::collider::Side;
 use piston_window::{
     clear, Button, ButtonArgs, ButtonEvent, EventLoop, Filter, Flip, G2dTexture, G2dTextureContext,
     GenericEvent, ImageSize, PistonWindow, RenderEvent, Size, Texture, TextureSettings,
@@ -41,6 +42,8 @@ enum Music {
 #[derive(Copy, Clone, Hash, PartialEq, Eq)]
 enum Sound {
     Jump,
+    Brick,
+    Coin,
 }
 
 pub struct Game {
@@ -125,6 +128,8 @@ impl Game {
     fn load_mario(player: &mut Player<G2dTexture>) {
         player.add_animation("idle", vec![[0, 0]]);
         player.add_animation("jump", vec![[0, 5]]);
+        player.add_animation("jump-right", vec![[0, 9]]);
+        player.add_animation("fall", vec![[0, 8]]);
         player.add_animation("walk", vec![[0, 1], [0, 2], [0, 3]]);
         player.add_animation("skid", vec![[0, 4]]);
     }
@@ -264,11 +269,19 @@ impl Game {
 
     pub fn update(&mut self, dt: f64) {
         self.player.update(dt);
-        // self.player2.update(dt);
+        self.player
+            .respawn_player_if_overflow(self.camera.world_height + 100.0);
 
-        for object in self.objects.iter() {
-            self.player.collide_with(&object.get_transform());
-            self.player2.collide_with(&object.get_transform());
+        for object in self.objects.iter_mut().filter(|o| !o.is_destroyed()) {
+            let transform = object.get_transform();
+            if let Some(side) = self.player.collide_with(&transform) {
+                match side {
+                    Side::TOP => {
+                        object.destroy();
+                    }
+                    _ => {}
+                };
+            }
         }
 
         self.camera.follow_player(&self.player);
@@ -294,6 +307,8 @@ fn main() {
     music::start::<Music, Sound, _>(16, || {
         music::bind_music_file(Music::World1_1, "./assets/main_theme.mp3");
         music::bind_sound_file(Sound::Jump, "./assets/jump.mp3");
+        music::bind_sound_file(Sound::Brick, "./assets/brick.wav");
+        music::bind_sound_file(Sound::Coin, "./assets/coin.wav");
         music::set_volume(music::MAX_VOLUME);
         music::play_music(&Music::World1_1, music::Repeat::Forever);
 
