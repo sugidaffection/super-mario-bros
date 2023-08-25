@@ -277,7 +277,10 @@ impl Game {
             if let Some(side) = self.player.collide_with(&transform) {
                 match side {
                     Side::TOP => {
-                        object.destroy();
+                        let player_center = self.player.get_transform().center_xw();
+                        if player_center > transform.x() && player_center < transform.xw() {
+                            object.destroy();
+                        }
                     }
                     _ => {}
                 };
