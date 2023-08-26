@@ -32,6 +32,7 @@ pub enum PlayerState {
     Crouch,
     Fall,
     Skid,
+    Push,
 }
 
 pub struct Player<I: ImageSize> {
@@ -82,11 +83,30 @@ where
                 let overlap = transform.x() - self.transform.xw();
                 self.transform.translate(overlap, 0.0);
                 self.physics.velocity.x = 0.0;
+                if self.state != PlayerState::Jump
+                    && self.input.right
+                    && self.physics.on_ground
+                    && self.direction == PlayerDirection::Right
+                {
+                    self.state = PlayerState::Push;
+                } else {
+                    self.state = PlayerState::Idle;
+                }
             }
             Some(Side::LEFT) => {
                 let overlap = self.transform.x() - transform.xw();
                 self.transform.translate(-overlap, 0.0);
                 self.physics.velocity.x = 0.0;
+                self.state = PlayerState::Push;
+                if self.state != PlayerState::Jump
+                    && self.input.left
+                    && self.physics.on_ground
+                    && self.direction == PlayerDirection::Left
+                {
+                    self.state = PlayerState::Push;
+                } else {
+                    self.state = PlayerState::Idle;
+                }
             }
             Some(Side::TOP) => {
                 // Resolve collision and prevent player from going beyond the top side of the screen
@@ -119,7 +139,9 @@ where
                     self.sprites.play_animation("walk")
                 }
             }
-            PlayerState::Run => self.sprites.play_animation("run"),
+            PlayerState::Run => {
+                self.sprites.play_animation("run");
+            }
             PlayerState::Jump => {
                 if self.input.right || self.input.left {
                     self.sprites.play_animation("jump-right")
@@ -128,11 +150,10 @@ where
                 }
             }
             PlayerState::Fall => {
-                if self.input.right || self.input.left {
-                    self.sprites.play_animation("fall")
-                } else {
-                    self.sprites.play_animation("jump");
-                }
+                self.sprites.play_animation("fall");
+            }
+            PlayerState::Push => {
+                self.sprites.play_animation("push");
             }
             _ => {}
         }
@@ -151,9 +172,15 @@ where
             self.state = PlayerState::Fall;
         }
         if self.physics.on_ground
-            && (![PlayerState::Walk, PlayerState::Skid].contains(&self.state)
-                || [PlayerState::Walk, PlayerState::Skid].contains(&self.state)
-                    && self.physics.vel_x_is_almost_zero(0.1))
+            && (![
+                PlayerState::Walk,
+                PlayerState::Run,
+                PlayerState::Skid,
+                PlayerState::Push,
+            ]
+            .contains(&self.state)
+                || ([PlayerState::Walk, PlayerState::Run, PlayerState::Skid].contains(&self.state)
+                    && self.physics.vel_x_is_almost_zero(0.1)))
         {
             self.state = PlayerState::Idle;
         }
@@ -162,7 +189,14 @@ where
     fn move_left(&mut self) {
         self.direction = PlayerDirection::Left;
         self.physics.set_force(-1.0, 0.0);
-        if [PlayerState::Walk, PlayerState::Idle, PlayerState::Skid].contains(&self.state) {
+        if [
+            PlayerState::Walk,
+            PlayerState::Run,
+            PlayerState::Idle,
+            PlayerState::Skid,
+        ]
+        .contains(&self.state)
+        {
             self.state = PlayerState::Walk;
             if self.physics.velocity.x > 0.0 {
                 self.state = PlayerState::Skid;
@@ -173,7 +207,14 @@ where
     fn move_right(&mut self) {
         self.direction = PlayerDirection::Right;
         self.physics.set_force(1.0, 0.0);
-        if [PlayerState::Walk, PlayerState::Idle, PlayerState::Skid].contains(&self.state) {
+        if [
+            PlayerState::Walk,
+            PlayerState::Run,
+            PlayerState::Idle,
+            PlayerState::Skid,
+        ]
+        .contains(&self.state)
+        {
             self.state = PlayerState::Walk;
 
             if self.physics.velocity.x < 0.0 {
@@ -225,12 +266,15 @@ where
             self.move_right();
         }
 
-        if self.input.run {
+        if self.input.run
+            && ![PlayerState::Push, PlayerState::Skid].contains(&self.state)
+            && self.physics.on_ground
+        {
             self.physics.run();
-            self.sprites.set_animation_interval(0.1, "walk");
+            self.state = PlayerState::Run;
+            self.sprites.set_animation_interval(0.1, "run");
         } else {
             self.physics.walk();
-            self.sprites.set_animation_interval(0.2, "walk");
         }
 
         if !self.input.right && !self.input.left {

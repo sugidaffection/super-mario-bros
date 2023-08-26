@@ -4,14 +4,15 @@ use fps_counter::FPSCounter;
 use graphics::Transformed;
 use libs::collider::Side;
 use piston_window::{
-    clear, Button, ButtonArgs, ButtonEvent, EventLoop, Filter, Flip, G2dTexture, G2dTextureContext,
-    GenericEvent, ImageSize, PistonWindow, RenderEvent, Size, Texture, TextureSettings,
-    UpdateEvent, Window, WindowSettings,
+    clear, AdvancedWindow, Button, ButtonArgs, ButtonEvent, EventLoop, Filter, Flip, G2dTexture,
+    G2dTextureContext, GenericEvent, ImageSize, PistonWindow, RenderEvent, Size, Texture,
+    TextureSettings, UpdateEvent, Window, WindowSettings,
 };
 use serde_json::{from_reader, Value};
 use sprite::Sprite;
 use std::cell::RefCell;
 use std::fs::File;
+use std::ops::Mul;
 use std::path;
 use std::rc::Rc;
 
@@ -69,12 +70,15 @@ impl Game {
         let map_size = map_texture.get_size();
         let tilemap = SpriteSheet::new(map_texture);
 
-        let player_texture = Self::load_texture(&mut context, "player.png");
-        let mut player = Self::load_player(Rc::clone(&player_texture));
-        Self::load_mario(&mut player);
+        let player_texture = Self::load_texture(&mut context, "Mario.png");
+        let player_config = Self::load_player_mario_sonic_style_sprite_sheet_config();
+        let mut player = Self::load_player(Rc::clone(&player_texture), player_config);
+        Self::load_mario_sonic_animation(&mut player);
 
-        let mut player2 = Self::load_player(Rc::clone(&player_texture));
-        Self::load_luigi(&mut player2);
+        let player2_texture = Self::load_texture(&mut context, "player.png");
+        let player2_config = Self::load_mario_default_sprite_sheet_config();
+        let mut player2 = Self::load_player(Rc::clone(&player2_texture), player2_config);
+        Self::load_luigi_animation(&mut player2);
 
         let camera = Camera::new(
             viewport_size.width,
@@ -110,22 +114,46 @@ impl Game {
         Rc::new(texture)
     }
 
-    fn load_player(texture: Rc<G2dTexture>) -> Player<G2dTexture> {
+    fn load_player(texture: Rc<G2dTexture>, config: SpriteSheetConfig) -> Player<G2dTexture> {
         let player_sprite_sheet = SpriteSheet::new(texture);
-        let player_config_default = SpriteSheetConfig {
-            offset: Vector2::from([80.0, 34.0]),
-            spacing: Vector2::from([1.0, 47.0]),
-            grid: [21, 11],
-            sprite_size: Size::from([16.0, 16.0]),
-        };
-
         let mut player = Player::new();
-        player.set_sprite_sheet(player_sprite_sheet, player_config_default);
+        player.set_sprite_sheet(player_sprite_sheet, config);
 
         player
     }
 
-    fn load_mario(player: &mut Player<G2dTexture>) {
+    fn load_mario_default_sprite_sheet_config() -> SpriteSheetConfig {
+        SpriteSheetConfig {
+            offset: Vector2::new(80.0, 34.0),
+            spacing: Vector2::new(1.0, 47.0),
+            grid: [21, 11],
+            sprite_size: Size::from([16.0, 16.0]),
+            scale: Vector2::new(1.0, 1.0),
+        }
+    }
+
+    fn load_player_mario_sonic_style_sprite_sheet_config() -> SpriteSheetConfig {
+        SpriteSheetConfig {
+            offset: Vector2::from([0.0, 0.0]),
+            spacing: Vector2::from([0.0, 0.0]),
+            grid: [10, 6],
+            sprite_size: Size::from([42.0, 42.0]),
+            scale: Vector2::new(16.0 / 42.0, 16.0 / 42.0),
+        }
+    }
+
+    fn load_mario_sonic_animation(player: &mut Player<G2dTexture>) {
+        player.add_animation("idle", vec![[0, 0]]);
+        player.add_animation("jump", vec![[4, 0]]);
+        player.add_animation("jump-right", vec![[4, 0]]);
+        player.add_animation("fall", vec![[4, 1]]);
+        player.add_animation("skid", vec![[3, 0], [3, 1]]);
+        player.add_animation("walk", vec![[5, 0], [5, 1], [5, 2], [5, 3], [5, 4], [5, 5]]);
+        player.add_animation("run", vec![[6, 0], [6, 1], [6, 2]]);
+        player.add_animation("push", vec![[8, 0], [8, 1], [8, 2], [8, 3]]);
+    }
+
+    fn load_mario_animation(player: &mut Player<G2dTexture>) {
         player.add_animation("idle", vec![[0, 0]]);
         player.add_animation("jump", vec![[0, 5]]);
         player.add_animation("jump-right", vec![[0, 9]]);
@@ -134,7 +162,7 @@ impl Game {
         player.add_animation("skid", vec![[0, 4]]);
     }
 
-    fn load_luigi(player: &mut Player<G2dTexture>) {
+    fn load_luigi_animation(player: &mut Player<G2dTexture>) {
         player.add_animation("idle", vec![[1, 0]]);
         player.add_animation("jump", vec![[1, 5]]);
         player.add_animation("walk", vec![[1, 1], [1, 2], [1, 3]]);
@@ -147,6 +175,7 @@ impl Game {
             spacing: Vector2::from([0.0, 0.0]),
             grid: [1, 2],
             sprite_size: Size::from([16.0, 16.0]),
+            scale: Vector2::new(1.0, 1.0),
         };
         tileset.set_config(&tileset_config);
         tileset.set_current_tiles(0, 0);

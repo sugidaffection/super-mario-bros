@@ -1,7 +1,7 @@
 [package]
 name = "super-mario-bros"
 version = "0.2.0"
-authors = ["Sugi <developer.sugiono@gmail.com>"]
+authors = ["Sugiono <developer.sugiono@gmail.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

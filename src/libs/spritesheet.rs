@@ -1,6 +1,6 @@
 use cgmath::Vector2;
-use graphics::math::Matrix2d;
 use graphics::Graphics;
+use graphics::{math::Matrix2d, rectangle, Transformed};
 use piston_window::{ImageSize, Size};
 use sprite::Sprite;
 use std::{
@@ -8,11 +8,14 @@ use std::{
     rc::Rc,
 };
 
+use super::transform::{Rect, Trans, Transform};
+#[derive(Debug)]
 pub struct SpriteSheetConfig {
     pub grid: [usize; 2],
     pub sprite_size: Size,
     pub spacing: Vector2<f64>,
     pub offset: Vector2<f64>,
+    pub scale: Vector2<f64>,
 }
 
 pub struct SpriteSheet<I: ImageSize> {
@@ -21,6 +24,7 @@ pub struct SpriteSheet<I: ImageSize> {
     sprite_size: Size,
     spacing: Vector2<f64>,
     offset: Vector2<f64>,
+    scale: Vector2<f64>,
 }
 
 impl<I: ImageSize> SpriteSheet<I> {
@@ -33,8 +37,9 @@ impl<I: ImageSize> SpriteSheet<I> {
             sprite,
             grid: [1, 1],
             sprite_size: Size::from(size),
-            spacing: Vector2::from([0.0, 0.0]),
-            offset: Vector2::from([0.0, 0.0]),
+            spacing: Vector2::new(0.0, 0.0),
+            offset: Vector2::new(0.0, 0.0),
+            scale: Vector2::new(1.0, 1.0),
         };
         sprite.set_current_tiles(0, 0);
         sprite
@@ -45,8 +50,11 @@ impl<I: ImageSize> SpriteSheet<I> {
         self.sprite_size = config.sprite_size;
         self.spacing = config.spacing;
         self.offset = config.offset;
-
+        self.scale = config.scale;
         self.set_current_tiles(0, 0);
+        self.sprite.set_scale(self.scale.x, self.scale.y);
+        let scale = self.sprite.get_scale();
+        println!("Current config {:?} {:?}", config, scale);
     }
 
     pub fn clone_config(&mut self) -> SpriteSheetConfig {
@@ -55,6 +63,7 @@ impl<I: ImageSize> SpriteSheet<I> {
             sprite_size: self.sprite_size,
             spacing: self.spacing,
             offset: self.offset,
+            scale: self.scale,
         }
     }
 

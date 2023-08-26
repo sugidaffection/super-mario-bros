@@ -1,6 +1,7 @@
 # Super Mario Bros
 
-![Alt text](screenshot.gif?raw=true "Screenshot")
+![Super Mario Bros](screenshot.gif "Screenshot")
+![Super Mario Bros](screenshot2.gif "Screenshot 2")
 
 ## Table of Contents
 
@@ -42,3 +43,12 @@ End with an example of getting some data out of the system or using it for a lit
 ## Usage <a name = "usage"></a>
 
 Add notes about how to use the system.
+
+
+## Credits
+
+### Sprite Images
+
+1. neweegee
+   - Mario (Sonic Genesis-Style)
+   -  [Link to Resources](https://www.spriters-resource.com/custom_edited/mariocustoms/sheet/76485/)
