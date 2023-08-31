@@ -2,39 +2,43 @@ use cgmath::Vector2;
 use find_folder::Search;
 use fps_counter::FPSCounter;
 use graphics::Transformed;
+use libs::bricks::{Brick, BrickType};
 use libs::collider::Side;
+use libs::textures::TextureManager;
+use libs::tilemap::TileMap;
 use piston_window::{
-    clear, AdvancedWindow, Button, ButtonArgs, ButtonEvent, EventLoop, Filter, Flip, G2dTexture,
-    G2dTextureContext, GenericEvent, ImageSize, PistonWindow, RenderEvent, Size, Texture,
-    TextureSettings, UpdateEvent, Window, WindowSettings,
+    clear, Button, ButtonArgs, ButtonEvent, ButtonState, EventLoop, G2dTexture, GenericEvent,
+    ImageSize, Key, PistonWindow, RenderEvent, Size, UpdateEvent, WindowSettings,
 };
 use serde_json::{from_reader, Value};
 use sprite::Sprite;
 use std::cell::RefCell;
 use std::fs::File;
-use std::ops::Mul;
-use std::path;
 use std::rc::Rc;
 
 mod libs {
     pub mod animations;
+    pub mod bricks;
     pub mod camera;
     pub mod collider;
     pub mod controller;
+    pub mod core;
     pub mod object;
     pub mod physics;
     pub mod player;
     pub mod sprites_manager;
     pub mod spritesheet;
+    pub mod textures;
+    pub mod tilemap;
     pub mod transform;
 }
 
 use libs::camera::Camera;
-use libs::object::{Object, Object2D};
+use libs::core::{Destroyable, Drawable, Entity, Object2D, Updatable};
+use libs::object::Object;
 use libs::player::Player;
 use libs::spritesheet::{SpriteSheet, SpriteSheetConfig};
 use libs::transform::{Rect, Trans};
-
 #[derive(Copy, Clone, Hash, PartialEq, Eq)]
 enum Music {
     World1_1,
@@ -46,75 +50,65 @@ enum Sound {
     Brick,
     Coin,
 }
-
 pub struct Game {
     window: PistonWindow,
     size: Size,
     camera: Camera,
-    player: Player<G2dTexture>,
-    player2: Player<G2dTexture>,
-    tilemap: SpriteSheet<G2dTexture>,
-    objects: Vec<Object<G2dTexture>>,
+    tilemap: TileMap,
+    player: Player,
+    player2: Player,
+    objects: Vec<Brick>,
+    player_index: usize,
 }
 impl Game {
-    pub fn new(size: Size, viewport_size: Size) -> Self {
+    pub fn new(size: Size, viewport_size: Size) -> Result<Self, String> {
         let mut window: PistonWindow = WindowSettings::new("Super Goomba Bros", size)
             .exit_on_esc(true)
             .build()
-            .unwrap_or_else(|e| panic!("Failed to build PistonWindow: {}", e));
+            .map_err(|e| format!("Failed to build PistonWindow: {:?}", e))?;
         window.set_ups(60);
 
-        let mut context = window.create_texture_context();
+        let context = Rc::new(RefCell::new(window.create_texture_context()));
+        let mut texture_manager = TextureManager::new(context.clone());
+        let map_texture = texture_manager.load_texture("level_1_map", "world_1_1.png")?;
+        let mario_texture = texture_manager.load_texture("mario", "Mario.png")?;
+        let player2_texture = texture_manager.load_texture("player", "player.png")?;
+        let tileset_texture = texture_manager.load_texture("tileset", "tileset1.png")?;
 
-        let map_texture = Self::load_texture(&mut context, "world_1_1.png");
-        let map_size = map_texture.get_size();
-        let tilemap = SpriteSheet::new(map_texture);
+        let mut tilemap = TileMap::new();
 
-        let player_texture = Self::load_texture(&mut context, "Mario.png");
+        let map_size: Size = map_texture.get_size().into();
+        let mut map_sprite = Sprite::from_texture(map_texture);
+        map_sprite.set_anchor(0.0, 0.0);
+        tilemap.register_level(1, map_sprite);
+
         let player_config = Self::load_player_mario_sonic_style_sprite_sheet_config();
-        let mut player = Self::load_player(Rc::clone(&player_texture), player_config);
+        let mut player = Self::load_player(Rc::clone(&mario_texture), player_config);
         Self::load_mario_sonic_animation(&mut player);
 
-        let player2_texture = Self::load_texture(&mut context, "player.png");
         let player2_config = Self::load_mario_default_sprite_sheet_config();
         let mut player2 = Self::load_player(Rc::clone(&player2_texture), player2_config);
         Self::load_luigi_animation(&mut player2);
 
-        let camera = Camera::new(
-            viewport_size.width,
-            viewport_size.height,
-            map_size.0.into(),
-            map_size.1 as f64,
-            window.draw_size().height as f64 / map_size.1 as f64,
-        );
+        let camera = Camera::new(size, viewport_size, map_size);
 
-        let tileset_texture = Self::load_texture(&mut context, "tileset1.png");
         let objects = Self::load_objects(tileset_texture);
 
         let game = Self {
             window,
             size,
             camera,
+            tilemap,
             player,
             player2,
-            tilemap,
             objects,
+            player_index: 0,
         };
 
-        game
+        Ok(game)
     }
 
-    fn load_texture(context: &mut G2dTextureContext, path: &'static str) -> Rc<G2dTexture> {
-        let assets = Search::Parents(1).for_folder("assets").unwrap();
-        let path = assets.join(path);
-
-        let mut texture_settings = TextureSettings::new();
-        texture_settings.set_mag(Filter::Nearest);
-        let texture = Texture::from_path(context, path, Flip::None, &texture_settings).unwrap();
-        Rc::new(texture)
-    }
-
-    fn load_player(texture: Rc<G2dTexture>, config: SpriteSheetConfig) -> Player<G2dTexture> {
+    fn load_player(texture: Rc<G2dTexture>, config: SpriteSheetConfig) -> Player {
         let player_sprite_sheet = SpriteSheet::new(texture);
         let mut player = Player::new();
         player.set_sprite_sheet(player_sprite_sheet, config);
@@ -142,7 +136,7 @@ impl Game {
         }
     }
 
-    fn load_mario_sonic_animation(player: &mut Player<G2dTexture>) {
+    fn load_mario_sonic_animation(player: &mut Player) {
         player.add_animation("idle", vec![[0, 0]]);
         player.add_animation("jump", vec![[4, 0]]);
         player.add_animation("jump-right", vec![[4, 0]]);
@@ -153,7 +147,7 @@ impl Game {
         player.add_animation("push", vec![[8, 0], [8, 1], [8, 2], [8, 3]]);
     }
 
-    fn load_mario_animation(player: &mut Player<G2dTexture>) {
+    fn load_mario_animation(player: &mut Player) {
         player.add_animation("idle", vec![[0, 0]]);
         player.add_animation("jump", vec![[0, 5]]);
         player.add_animation("jump-right", vec![[0, 9]]);
@@ -162,13 +156,13 @@ impl Game {
         player.add_animation("skid", vec![[0, 4]]);
     }
 
-    fn load_luigi_animation(player: &mut Player<G2dTexture>) {
+    fn load_luigi_animation(player: &mut Player) {
         player.add_animation("idle", vec![[1, 0]]);
         player.add_animation("jump", vec![[1, 5]]);
         player.add_animation("walk", vec![[1, 1], [1, 2], [1, 3]]);
     }
 
-    fn load_objects(texture: Rc<G2dTexture>) -> Vec<Object<G2dTexture>> {
+    fn load_objects(texture: Rc<G2dTexture>) -> Vec<Brick> {
         let mut tileset = SpriteSheet::new(texture.clone());
         let tileset_config = SpriteSheetConfig {
             offset: Vector2::from([0.0, 0.0]),
@@ -211,7 +205,7 @@ impl Game {
             .flatten()
             .collect();
 
-        let mut objects: Vec<Object<G2dTexture>> = Vec::default();
+        let mut objects: Vec<Brick> = Vec::default();
         for obj in solid_objects {
             let json_obj = obj.as_object().unwrap();
             let x = json_obj.get("x").unwrap().as_f64().unwrap();
@@ -219,17 +213,23 @@ impl Game {
             let w = json_obj.get("width").unwrap().as_f64().unwrap();
             let h = json_obj.get("height").unwrap().as_f64().unwrap();
             let name = json_obj.get("name").unwrap().as_str().unwrap().to_string();
-            let mut o = Object::<G2dTexture>::new(name.clone());
-            o.set_size(w, h);
-            o.set_position(x, y);
-            if name.to_string().trim() == "brick".to_string().trim() {
-                o.set_sprite(Rc::clone(&brick_sprite));
-            }
 
-            if name.to_string().trim() == "coin".to_string().trim() {
-                o.set_sprite(Rc::clone(&coin_sprite));
+            if name.to_string().trim() == "brick".to_string().trim() {
+                let mut o = Brick::new(BrickType::Block, Rc::clone(&brick_sprite));
+                o.get_transform_mut().set_size(w, h);
+                o.get_transform_mut().set_position(x, y);
+                objects.push(o);
+            } else if name.to_string().trim() == "coin".to_string().trim() {
+                let mut o = Brick::new(BrickType::Coin, Rc::clone(&coin_sprite));
+                o.get_transform_mut().set_size(w, h);
+                o.get_transform_mut().set_position(x, y);
+                objects.push(o);
+            } else {
+                let mut o = Brick::new(BrickType::Ground, Rc::clone(&brick_sprite));
+                o.get_transform_mut().set_size(w, h);
+                o.get_transform_mut().set_position(x, y);
+                objects.push(o);
             }
-            objects.push(o);
         }
 
         objects
@@ -241,12 +241,8 @@ impl Game {
     {
         let window_size = self.size;
         let camera = &mut self.camera;
-        let camera_width = camera.viewport_width;
-        let camera_height = camera.viewport_height;
-        let scaled_width = camera_width * camera.scale;
-        let scaled_height = camera_height * camera.scale;
-        let translate_x = (window_size.width - scaled_width) / (2.0 * camera.scale);
-        let translate_y = (window_size.height - scaled_height) / (2.0 * camera.scale);
+        let translate_x = (window_size.width - (camera.viewport_size.width * camera.scale)) / 2.0;
+        let translate_y = (window_size.height - (camera.viewport_size.height * camera.scale)) / 2.0;
 
         let player = &mut self.player;
         let player2 = &mut self.player2;
@@ -254,33 +250,32 @@ impl Game {
 
         let tilemap = &mut self.tilemap;
 
-        tilemap.set_src_rect([camera.position.x.max(0.0), 0.0, camera_width, camera_height]);
-
         self.window.draw_2d(e, |_, g, _d| {
             clear([0.0, 0.0, 0.0, 0.5], g);
         });
 
         // render map
         self.window.draw_2d(e, |c, g, _d| {
-            let map_transform = c
-                .scale(camera.scale, camera.scale)
-                .trans(translate_x, translate_y)
-                .transform;
-            tilemap.draw(map_transform, g);
+            tilemap.draw(
+                c.trans(translate_x, translate_y)
+                    .scale(camera.scale, camera.scale)
+                    .transform,
+                g,
+            );
         });
 
         // render player and objects
         self.window.draw_2d(e, |c, g, _d| {
             let transform = c
-                .scale(camera.scale, camera.scale)
                 .trans(
-                    -camera.position.x + translate_x,
-                    -camera.position.y + translate_y,
+                    -camera.position.x * camera.scale + translate_x,
+                    -camera.position.y * camera.scale + translate_y,
                 )
+                .scale(camera.scale, camera.scale)
                 .transform;
-            for object in objects.iter_mut() {
+            for object in objects.iter_mut().filter(|o| !o.is_destroyed()) {
                 let obj = object.get_transform();
-                if obj.x() < camera.position.x + camera.viewport_width
+                if obj.x() < camera.position.x + camera.viewport_size.width
                     && obj.xw() >= camera.position.x
                 {
                     object.draw(transform, g);
@@ -288,7 +283,7 @@ impl Game {
             }
 
             player.draw(transform, g);
-            if player2.get_transform().x() < camera.position.x + camera.viewport_width
+            if player2.get_transform().x() < camera.position.x + camera.viewport_size.width
                 && player2.get_transform().xw() >= camera.position.x
             {
                 player2.draw(transform, g);
@@ -299,10 +294,14 @@ impl Game {
     pub fn update(&mut self, dt: f64) {
         self.player.update(dt);
         self.player
-            .respawn_player_if_overflow(self.camera.world_height + 100.0);
+            .respawn_player_if_overflow(self.camera.map_size.height + 100.0);
+
+        self.player2.update(dt);
+        self.player2
+            .respawn_player_if_overflow(self.camera.map_size.height + 100.0);
 
         for object in self.objects.iter_mut().filter(|o| !o.is_destroyed()) {
-            let transform = object.get_transform();
+            let transform = *object.get_transform();
             if let Some(side) = self.player.collide_with(&transform) {
                 match side {
                     Side::TOP => {
@@ -314,14 +313,41 @@ impl Game {
                     _ => {}
                 };
             }
+
+            if let Some(side) = self.player2.collide_with(&transform) {
+                match side {
+                    Side::TOP => {
+                        let player_center = self.player2.get_transform().center_xw();
+                        if player_center > transform.x() && player_center < transform.xw() {
+                            object.destroy();
+                        }
+                    }
+                    _ => {}
+                };
+            }
         }
 
-        self.camera.follow_player(&self.player);
+        if self.player_index == 0 {
+            self.camera.follow_player(&self.player);
+        } else {
+            self.camera.follow_player(&self.player2);
+        }
+        self.camera.update_tilemap(&mut self.tilemap);
     }
 
     pub fn update_input(&mut self, args: ButtonArgs) {
         if let Button::Keyboard(key) = args.button {
-            self.player.update_input(key, args.state);
+            if self.player_index == 0 {
+                self.player.update_input(key, args.state);
+            } else {
+                self.player2.update_input(key, args.state);
+            }
+
+            if args.state == ButtonState::Press && key == Key::F1 {
+                self.player.reset_input();
+                self.player2.reset_input();
+                self.player_index = if self.player_index == 0 { 1 } else { 0 }
+            }
         }
     }
 }
@@ -334,28 +360,33 @@ fn main() {
     let viewport_size: Size = Size::from([width, height]);
     let mut timer = FPSCounter::default();
 
-    let mut game: Game = Game::new(window_size, viewport_size);
+    let object: Vec<Box<dyn Entity>> = vec![Box::new(Object::new("Object".to_string()))];
+    object.first().unwrap().get_transform();
 
-    music::start::<Music, Sound, _>(16, || {
-        music::bind_music_file(Music::World1_1, "./assets/main_theme.mp3");
-        music::bind_sound_file(Sound::Jump, "./assets/jump.mp3");
-        music::bind_sound_file(Sound::Brick, "./assets/brick.wav");
-        music::bind_sound_file(Sound::Coin, "./assets/coin.wav");
-        music::set_volume(music::MAX_VOLUME);
-        music::play_music(&Music::World1_1, music::Repeat::Forever);
+    if let Ok(mut game) = Game::new(window_size, viewport_size) {
+        music::start::<Music, Sound, _>(16, || {
+            music::bind_music_file(Music::World1_1, "./assets/main_theme.mp3");
+            music::bind_sound_file(Sound::Jump, "./assets/jump.mp3");
+            music::bind_sound_file(Sound::Brick, "./assets/brick.wav");
+            music::bind_sound_file(Sound::Coin, "./assets/coin.wav");
+            music::set_volume(music::MAX_VOLUME);
+            music::play_music(&Music::World1_1, music::Repeat::Forever);
 
-        while let Some(e) = game.window.next() {
-            if let Some(_) = e.render_args() {
-                game.render(&e);
+            while let Some(e) = game.window.next() {
+                if let Some(_) = e.render_args() {
+                    game.render(&e);
+                }
+
+                if let Some(u) = e.update_args() {
+                    game.update(u.dt);
+                }
+
+                if let Some(args) = e.button_args() {
+                    game.update_input(args);
+                }
             }
-
-            if let Some(u) = e.update_args() {
-                game.update(u.dt);
-            }
-
-            if let Some(args) = e.button_args() {
-                game.update_input(args);
-            }
-        }
-    });
+        });
+    } else {
+        eprintln!("Error!");
+    }
 }

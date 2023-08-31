@@ -2,15 +2,15 @@ use std::borrow::BorrowMut;
 
 use graphics::math::Matrix2d;
 use graphics::{Graphics, Transformed};
-use piston_window::{ButtonState, ImageSize, Key, Size};
+use piston_window::{ButtonState, G2d, G2dTexture, Key};
 
 use crate::Sound;
 
 use super::collider::Side;
+use super::core::{Drawable, Entity, Object2D, Updatable};
 use super::{
     collider::Collision,
     controller::Controller,
-    object::{Object, Object2D},
     physics::Physics,
     sprites_manager::SpriteManager,
     spritesheet::{SpriteSheet, SpriteSheetConfig},
@@ -35,8 +35,8 @@ pub enum PlayerState {
     Push,
 }
 
-pub struct Player<I: ImageSize> {
-    sprites: SpriteManager<I>,
+pub struct Player {
+    sprites: SpriteManager,
     physics: Physics,
     state: PlayerState,
     transform: Transform,
@@ -44,11 +44,8 @@ pub struct Player<I: ImageSize> {
     input: Controller,
 }
 
-impl<I> Player<I>
-where
-    I: ImageSize,
-{
-    pub fn new() -> Player<I> {
+impl Player {
+    pub fn new() -> Player {
         let mut transform = Transform::new();
         transform.set_position(20.0, 20.0);
         Player {
@@ -61,7 +58,7 @@ where
         }
     }
 
-    pub fn set_sprite_sheet(&mut self, sprite_sheet: SpriteSheet<I>, config: SpriteSheetConfig) {
+    pub fn set_sprite_sheet(&mut self, sprite_sheet: SpriteSheet, config: SpriteSheetConfig) {
         self.sprites.set_spritesheet(sprite_sheet);
         self.sprites.add_config("default", config);
         self.sprites.set_current_config("default");
@@ -69,10 +66,6 @@ where
 
     pub fn add_animation(&mut self, name: &'static str, animations: Vec<[usize; 2]>) {
         self.sprites.add_animation(name, animations);
-    }
-
-    pub fn get_transform(&self) -> &Transform {
-        &self.transform
     }
 
     pub fn collide_with(&mut self, transform: &Transform) -> Option<Side> {
@@ -243,12 +236,14 @@ where
             self.physics.on_ground = false;
         }
     }
+
+    pub fn reset_input(&mut self) {
+        self.input.reset();
+    }
 }
-impl<I> Object2D<I> for Player<I>
-where
-    I: ImageSize,
-{
-    fn draw<B: Graphics<Texture = I>>(&mut self, t: Matrix2d, b: &mut B) {
+
+impl Drawable for Player {
+    fn draw(&mut self, t: Matrix2d, b: &mut G2d) {
         let transformed = t.trans(
             self.transform.get_position().x,
             self.transform.get_position().y,
@@ -256,7 +251,9 @@ where
 
         self.sprites.draw(transformed, b);
     }
+}
 
+impl Updatable for Player {
     fn update(&mut self, dt: f64) {
         if self.input.left {
             self.move_left();
@@ -293,3 +290,15 @@ where
             .translate(self.physics.velocity.x * dt, self.physics.velocity.y * dt);
     }
 }
+
+impl Object2D for Player {
+    fn get_transform(&self) -> &Transform {
+        &self.transform
+    }
+
+    fn get_transform_mut(&mut self) -> &mut Transform {
+        self.transform.borrow_mut()
+    }
+}
+
+impl Entity for Player {}

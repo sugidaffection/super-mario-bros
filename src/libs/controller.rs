@@ -50,4 +50,11 @@ impl Controller {
             }
         }
     }
+
+    pub fn reset(&mut self) {
+        self.left = false;
+        self.right = false;
+        self.jump = false;
+        self.run = false;
+    }
 }

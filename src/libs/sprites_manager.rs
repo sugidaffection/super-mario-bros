@@ -1,17 +1,13 @@
 use super::{
-    animations::SpriteAnimation,
+    animations::SpriteSheetAnimation,
+    core::{Drawable, Updatable},
     spritesheet::{SpriteSheet, SpriteSheetConfig},
 };
-use piston_window::math::Matrix2d;
-use piston_window::{
-    Filter, Flip, G2dTexture, G2dTextureContext, Graphics, ImageSize, Texture, TextureSettings,
-};
-use sprite::Sprite;
-use std::{borrow::BorrowMut, rc::Rc};
-use std::{cell::RefCell, path::PathBuf};
+use piston_window::{math::Matrix2d, G2d, G2dTexture};
+use piston_window::{Graphics, ImageSize};
 
 pub trait SpriteManagerFn<I: ImageSize> {
-    fn set_sprite_sheet(&mut self, sprite_sheet: SpriteSheet<I>);
+    fn set_sprite_sheet(&mut self, sprite_sheet: SpriteSheet);
 }
 
 pub struct SpriteConfig {
@@ -19,18 +15,15 @@ pub struct SpriteConfig {
     config: SpriteSheetConfig,
 }
 
-pub struct SpriteManager<I: ImageSize> {
-    sprite_sheet: Option<SpriteSheet<I>>,
+pub struct SpriteManager {
+    sprite_sheet: Option<SpriteSheet>,
     sprite_configs: Vec<SpriteConfig>,
     current_config_name: Option<&'static str>,
-    animations: Vec<SpriteAnimation>,
+    animations: Vec<SpriteSheetAnimation>,
     current_animation_name: Option<&'static str>,
 }
 
-impl<I> SpriteManager<I>
-where
-    I: ImageSize,
-{
+impl SpriteManager {
     pub fn new() -> Self {
         Self {
             sprite_sheet: None,
@@ -41,7 +34,7 @@ where
         }
     }
 
-    pub fn set_spritesheet(&mut self, sprite_sheet: SpriteSheet<I>) {
+    pub fn set_spritesheet(&mut self, sprite_sheet: SpriteSheet) {
         self.sprite_sheet = Some(sprite_sheet);
     }
 
@@ -50,7 +43,7 @@ where
     }
 
     pub fn add_animation(&mut self, name: &'static str, animations: Vec<[usize; 2]>) {
-        let mut an = SpriteAnimation::new(name, animations);
+        let mut an = SpriteSheetAnimation::new(name, animations);
         an.set_animation_interval(0.2);
         self.animations.push(an);
     }
@@ -92,8 +85,10 @@ where
             x.stop();
         })
     }
+}
 
-    pub fn draw<B: Graphics<Texture = I>>(&mut self, t: Matrix2d, b: &mut B) {
+impl Drawable for SpriteManager {
+    fn draw(&mut self, t: Matrix2d, b: &mut G2d) {
         if let Some(sprite_sheet) = &mut self.sprite_sheet {
             sprite_sheet.draw(t, b);
 
@@ -110,8 +105,10 @@ where
             }
         }
     }
+}
 
-    pub fn update(&mut self, dt: f64) {
+impl Updatable for SpriteManager {
+    fn update(&mut self, dt: f64) {
         if let Some(animation_name) = self.current_animation_name {
             if let Some(animation) = self
                 .animations

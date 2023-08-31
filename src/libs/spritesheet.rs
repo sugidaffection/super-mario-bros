@@ -1,14 +1,12 @@
 use cgmath::Vector2;
+use graphics::math::Matrix2d;
 use graphics::Graphics;
-use graphics::{math::Matrix2d, rectangle, Transformed};
-use piston_window::{ImageSize, Size};
+use piston_window::{G2d, G2dTexture, ImageSize, Size};
 use sprite::Sprite;
-use std::{
-    cell::{Cell, RefCell},
-    rc::Rc,
-};
+use std::rc::Rc;
 
-use super::transform::{Rect, Trans, Transform};
+use super::core::Drawable;
+
 #[derive(Debug)]
 pub struct SpriteSheetConfig {
     pub grid: [usize; 2],
@@ -18,8 +16,8 @@ pub struct SpriteSheetConfig {
     pub scale: Vector2<f64>,
 }
 
-pub struct SpriteSheet<I: ImageSize> {
-    sprite: Sprite<I>,
+pub struct SpriteSheet {
+    sprite: Sprite<G2dTexture>,
     grid: [usize; 2],
     sprite_size: Size,
     spacing: Vector2<f64>,
@@ -27,8 +25,8 @@ pub struct SpriteSheet<I: ImageSize> {
     scale: Vector2<f64>,
 }
 
-impl<I: ImageSize> SpriteSheet<I> {
-    pub fn new(texture: Rc<I>) -> Self {
+impl SpriteSheet {
+    pub fn new(texture: Rc<G2dTexture>) -> Self {
         let size = texture.get_size();
         let mut sprite = Sprite::from_texture(texture);
         sprite.set_anchor(0.0, 0.0);
@@ -53,21 +51,9 @@ impl<I: ImageSize> SpriteSheet<I> {
         self.scale = config.scale;
         self.set_current_tiles(0, 0);
         self.sprite.set_scale(self.scale.x, self.scale.y);
-        let scale = self.sprite.get_scale();
-        println!("Current config {:?} {:?}", config, scale);
     }
 
-    pub fn clone_config(&mut self) -> SpriteSheetConfig {
-        SpriteSheetConfig {
-            grid: self.grid,
-            sprite_size: self.sprite_size,
-            spacing: self.spacing,
-            offset: self.offset,
-            scale: self.scale,
-        }
-    }
-
-    pub fn clone_sprite(&mut self) -> Sprite<I> {
+    pub fn clone_sprite(&mut self) -> Sprite<G2dTexture> {
         let rect = self.sprite.get_src_rect().unwrap();
         let mut sprite = Sprite::from_texture(self.sprite.get_texture().clone());
         sprite.set_src_rect(rect);
@@ -92,12 +78,10 @@ impl<I: ImageSize> SpriteSheet<I> {
     pub fn set_flip_x(&mut self, value: bool) {
         self.sprite.set_flip_x(value);
     }
+}
 
-    pub fn set_src_rect(&mut self, rect: [f64; 4]) {
-        self.sprite.set_src_rect(rect);
-    }
-
-    pub fn draw<B: Graphics<Texture = I>>(&self, t: Matrix2d, b: &mut B) {
+impl Drawable for SpriteSheet {
+    fn draw(&mut self, t: Matrix2d, b: &mut G2d) {
         self.sprite.draw(t, b);
     }
 }

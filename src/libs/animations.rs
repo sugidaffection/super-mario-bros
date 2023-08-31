@@ -1,4 +1,4 @@
-pub struct SpriteAnimation {
+pub struct SpriteSheetAnimation {
     pub name: &'static str,
     animations: Vec<[usize; 2]>,
     animation_lt: f64,
@@ -13,7 +13,7 @@ enum AnimationState {
     RUNNING,
 }
 
-impl SpriteAnimation {
+impl SpriteSheetAnimation {
     pub fn new(name: &'static str, animations: Vec<[usize; 2]>) -> Self {
         Self {
             name: name,

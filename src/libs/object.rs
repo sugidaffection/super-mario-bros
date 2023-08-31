@@ -1,3 +1,4 @@
+use std::borrow::BorrowMut;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -6,31 +7,25 @@ use crate::Sound;
 use cgmath::Vector2;
 use graphics::math::Matrix2d;
 use graphics::{Graphics, Transformed};
-use piston_window::{rectangle, DrawState, G2dTexture, ImageSize, Rectangle, Size};
+use piston_window::{rectangle, DrawState, G2d, G2dTexture, Rectangle, Size};
 use sprite::{Scene, Sprite};
 
-pub trait Object2D<I: ImageSize> {
-    fn draw<B: Graphics<Texture = I>>(&mut self, t: Matrix2d, b: &mut B);
-    fn update(&mut self, dt: f64);
-}
+use super::core::{Drawable, Entity, Object2D, Updatable};
 
-pub struct Object<I: ImageSize> {
+pub struct Object {
     pub name: String,
     color: [f32; 4],
     border: bool,
     transparent: bool,
     solid: bool,
     transform: Transform,
-    scene: Option<Scene<I>>,
-    sprite: Option<Rc<RefCell<Sprite<I>>>>,
+    scene: Option<Scene<G2dTexture>>,
+    sprite: Option<Rc<RefCell<Sprite<G2dTexture>>>>,
     destroyed: bool,
 }
 
-impl<I> Object<I>
-where
-    I: ImageSize,
-{
-    pub fn new(name: String) -> Object<I> {
+impl Object {
+    pub fn new(name: String) -> Object {
         Object {
             name,
             color: [1.0, 1.0, 1.0, 1.0],
@@ -56,19 +51,15 @@ where
         self.transparent = value;
     }
 
-    pub fn get_transform(&self) -> Transform {
-        self.transform
-    }
-
     pub fn set_border(&mut self, value: bool) {
         self.border = value;
     }
 
-    pub fn set_scene(&mut self, scene: Scene<I>) {
+    pub fn set_scene(&mut self, scene: Scene<G2dTexture>) {
         self.scene = Some(scene);
     }
 
-    pub fn set_sprite(&mut self, sprite: Rc<RefCell<Sprite<I>>>) {
+    pub fn set_sprite(&mut self, sprite: Rc<RefCell<Sprite<G2dTexture>>>) {
         self.sprite = Some(sprite);
     }
 
@@ -98,7 +89,7 @@ where
     }
 }
 
-impl<I: ImageSize> Default for Object<I> {
+impl Default for Object {
     fn default() -> Self {
         Self {
             name: "".to_string(),
@@ -114,11 +105,8 @@ impl<I: ImageSize> Default for Object<I> {
     }
 }
 
-impl<I> Object2D<I> for Object<I>
-where
-    I: ImageSize,
-{
-    fn draw<B: Graphics<Texture = I>>(&mut self, t: Matrix2d, b: &mut B) {
+impl Drawable for Object {
+    fn draw(&mut self, t: Matrix2d, b: &mut G2d) {
         if !self.transparent {
             if self.border {
                 Rectangle::new_border(self.color, 1.0).draw(
@@ -134,19 +122,17 @@ where
         let scale = self.get_scale();
         if !self.destroyed {
             if let Some(sprite) = self.sprite.as_mut() {
-                sprite.borrow_mut().set_scale(scale.x, scale.y);
                 sprite.borrow().draw(
-                    t.trans(self.transform.center_xw(), self.transform.center_yh()),
+                    t.scale(scale.x, scale.y)
+                        .trans(self.transform.center_xw(), self.transform.center_yh()),
                     b,
                 )
             }
         }
     }
-
-    fn update(&mut self, dt: f64) {}
 }
 
-impl<I: ImageSize> Trans for Object<I> {
+impl Trans for Object {
     fn set_scale(&mut self, x: f64, y: f64) {
         self.transform.set_scale(x, y);
     }
@@ -211,3 +197,19 @@ impl<I: ImageSize> Trans for Object<I> {
         self.transform.rotate(x, y);
     }
 }
+
+impl Object2D for Object {
+    fn get_transform(&self) -> &Transform {
+        &self.transform
+    }
+
+    fn get_transform_mut(&mut self) -> &mut Transform {
+        self.transform.borrow_mut()
+    }
+}
+
+impl Updatable for Object {
+    fn update(&mut self, dt: f64) {}
+}
+
+impl Entity for Object {}
