@@ -333,6 +333,7 @@ impl Game {
             self.camera.follow_player(&self.player2);
         }
         self.camera.update_tilemap(&mut self.tilemap);
+        self.camera.update(dt);
     }
 
     pub fn update_input(&mut self, args: ButtonArgs) {
