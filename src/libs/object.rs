@@ -3,12 +3,11 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::libs::transform::{Rect, Trans, Transform};
-use crate::Sound;
 use cgmath::Vector2;
 use graphics::math::Matrix2d;
-use graphics::{Graphics, Transformed};
+use graphics::Transformed;
 use piston_window::{rectangle, DrawState, G2d, G2dTexture, Rectangle, Size};
-use sprite::{Scene, Sprite};
+use sprite::Sprite;
 
 use super::core::{Drawable, Entity, Object2D, Updatable};
 
@@ -19,7 +18,6 @@ pub struct Object {
     transparent: bool,
     solid: bool,
     transform: Transform,
-    scene: Option<Scene<G2dTexture>>,
     sprite: Option<Rc<RefCell<Sprite<G2dTexture>>>>,
     destroyed: bool,
 }
@@ -33,59 +31,9 @@ impl Object {
             transparent: true,
             solid: true,
             transform: Transform::new(),
-            scene: None,
             sprite: None,
             destroyed: false,
         }
-    }
-
-    pub fn is_solid(&self) -> bool {
-        self.solid
-    }
-
-    pub fn set_solid(&mut self, value: bool) {
-        self.solid = value;
-    }
-
-    pub fn set_transparent(&mut self, value: bool) {
-        self.transparent = value;
-    }
-
-    pub fn set_border(&mut self, value: bool) {
-        self.border = value;
-    }
-
-    pub fn set_scene(&mut self, scene: Scene<G2dTexture>) {
-        self.scene = Some(scene);
-    }
-
-    pub fn set_sprite(&mut self, sprite: Rc<RefCell<Sprite<G2dTexture>>>) {
-        self.sprite = Some(sprite);
-    }
-
-    pub fn run_animation(&self) {
-        if let Some(scene) = &self.scene {
-            scene.running();
-        }
-    }
-
-    pub fn destroy(&mut self) {
-        if self.name == "brick" {
-            self.destroyed = true;
-            music::play_sound(&Sound::Brick, music::Repeat::Times(0), 1.0);
-        } else {
-            self.coin();
-        }
-    }
-
-    pub fn coin(&mut self) {
-        if self.name == "coin" {
-            music::play_sound(&Sound::Coin, music::Repeat::Times(0), 1.0);
-        }
-    }
-
-    pub fn is_destroyed(&self) -> bool {
-        self.destroyed
     }
 }
 
@@ -98,7 +46,6 @@ impl Default for Object {
             transparent: true,
             solid: true,
             transform: Transform::new(),
-            scene: None,
             sprite: None,
             destroyed: false,
         }

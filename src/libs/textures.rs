@@ -19,12 +19,13 @@ impl TextureManager {
     pub fn load_texture(
         &mut self,
         name: &'static str,
-        path: &'static str,
+        path_str: &'static str,
     ) -> Result<Rc<G2dTexture>, String> {
         let assets = Search::Parents(1)
             .for_folder("assets")
             .map_err(|e| e.to_string())?;
-        let path = assets.join(path);
+        let path = assets.join(path_str);
+        println!("{:?}", path.to_str());
 
         let mut texture_settings = TextureSettings::new();
         texture_settings.set_mag(Filter::Nearest);
@@ -34,10 +35,17 @@ impl TextureManager {
             Flip::None,
             &texture_settings,
         )
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| format!("Error : {} {}", e.to_string(), path_str))?;
         let texture_rc = Rc::new(texture);
         self.textures.insert(name, texture_rc.clone());
 
         Ok(texture_rc)
+    }
+
+    pub fn get_texture(&self, name: &'static str) -> Result<Rc<G2dTexture>, String> {
+        self.textures
+            .get(name)
+            .map(|texture| texture.clone())
+            .ok_or(format!("Failed to get texture {}", name))
     }
 }

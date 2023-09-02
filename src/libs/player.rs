@@ -44,9 +44,10 @@ impl Player {
     pub fn new() -> Player {
         let mut transform = Transform::new();
         transform.set_position(20.0, 20.0);
+        let physics = Physics::new(transform);
         Player {
             sprites: SpriteSheetManager::new(),
-            physics: Physics::new(transform),
+            physics,
             state: PlayerState::Jump,
             direction: PlayerDirection::Right,
             input: Controller::new(),

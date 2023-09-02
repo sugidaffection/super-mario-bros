@@ -20,7 +20,6 @@ pub struct Physics {
     pub force: Vector2<f64>,
     pub mass: f64,
     pub deceleration: f64,
-    pub skid_factor: f64,
     pub transform: Transform,
 }
 
@@ -40,7 +39,6 @@ impl Physics {
             force: Vector2::new(0.0, 0.0),
             mass: 450.0,
             deceleration: 120.0,
-            skid_factor: 1.08,
             transform,
         }
     }
@@ -101,10 +99,10 @@ impl Physics {
                 self.velocity.x = (self.velocity.x + deceleration).min(0.0);
             }
         } else if self.force.x > 0.0 {
-            let friction = self.friction * self.velocity.x.abs() * dt;
+            let friction = self.friction * 100.0 * self.velocity.x.abs() * dt;
             self.velocity.x -= friction * dt;
         } else if self.force.x < 0.0 {
-            let friction = self.friction * self.velocity.x.abs() * dt;
+            let friction = self.friction * 100.0 * self.velocity.x.abs() * dt;
             self.velocity.x += friction * dt;
         }
 
@@ -112,12 +110,6 @@ impl Physics {
             .velocity
             .x
             .clamp(-self.max_velocity.x, self.max_velocity.x);
-
-        if self.force.x != 0.0 && self.force.x.signum() != self.velocity.x.signum() {
-            self.velocity.x *= self.skid_factor;
-
-            self.velocity.x += self.force.x * self.movement_speed * dt;
-        }
     }
 
     pub fn set_force(&mut self, x: f64, y: f64) {

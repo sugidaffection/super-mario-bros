@@ -55,14 +55,12 @@ impl Camera {
     }
 
     pub fn update_tilemap(&self, tilemap: &mut TileMap) {
-        if let Some(map) = tilemap.get_current_map() {
-            map.set_src_rect([
-                self.position.x,
-                self.position.y,
-                self.viewport_size.width,
-                self.viewport_size.height,
-            ]);
-        }
+        tilemap.set_src_rect([
+            self.position.x,
+            self.position.y,
+            self.viewport_size.width,
+            self.viewport_size.height,
+        ]);
     }
 
     pub fn lerp(from: f64, to: f64, time: f64) -> f64 {

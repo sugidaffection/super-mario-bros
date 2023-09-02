@@ -1,10 +1,7 @@
 use graphics::{types::Matrix2d, Graphics};
 use piston_window::{G2d, G2dTexture};
 
-use super::{
-    object::Object,
-    transform::{Rect, Transform},
-};
+use super::transform::{Rect, Transform};
 
 pub trait Drawable {
     fn draw(&mut self, t: Matrix2d, b: &mut G2d);

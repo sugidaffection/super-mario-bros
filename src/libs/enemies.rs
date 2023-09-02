@@ -1,8 +1,8 @@
 use cgmath::Vector2;
-use graphics::Transformed;
+use graphics::{rectangle, Transformed};
 
 use super::{
-    collider::{Collider, Collision, Side},
+    collider::{Collision, Side},
     core::{Drawable, Object2D, Updatable},
     physics::Physics,
     sprite_sheet::SpriteSheet,
@@ -14,6 +14,7 @@ pub struct Enemy {
     name: &'static str,
     sprite_sheet_manager: SpriteSheetManager,
     physics: Physics,
+    pub is_dead: bool,
 }
 
 impl Enemy {
@@ -22,10 +23,13 @@ impl Enemy {
         transform.set_position(position.x, position.y);
         let mut physics = Physics::new(transform);
         physics.set_force(1.0, 0.0);
+        physics.movement_speed = 50.0;
+        physics.friction = 0.9;
         Self {
             name,
             sprite_sheet_manager: SpriteSheetManager::new(),
             physics,
+            is_dead: false,
         }
     }
 
@@ -38,15 +42,21 @@ impl Enemy {
     }
 
     pub fn play_animation(&mut self, name: &'static str) {
+        self.sprite_sheet_manager.set_animation_interval(0.1, name);
         self.sprite_sheet_manager.play_animation(name);
+    }
+
+    pub fn dead(&mut self) {
+        self.is_dead = true;
+        self.sprite_sheet_manager.play_animation("dead");
+        self.physics.set_force(0.0, 0.0);
     }
 }
 
 impl Drawable for Enemy {
     fn draw(&mut self, t: graphics::types::Matrix2d, b: &mut piston_window::G2d) {
         let position = self.physics.transform.get_position();
-        self.sprite_sheet_manager
-            .draw(t.trans(position.x, position.y), b);
+        self.sprite_sheet_manager.draw(t.trans_pos(position), b);
     }
 }
 
@@ -77,9 +87,11 @@ impl Collision for Enemy {
         match side {
             Some(Side::RIGHT) => {
                 self.physics.set_force(-1.0, 0.0);
+                self.physics.velocity.x = 0.0;
             }
             Some(Side::LEFT) => {
                 self.physics.set_force(1.0, 0.0);
+                self.physics.velocity.x = 0.0;
             }
             Some(_) => {}
             None => {}
