@@ -25,7 +25,6 @@ impl TextureManager {
             .for_folder("assets")
             .map_err(|e| e.to_string())?;
         let path = assets.join(path_str);
-        println!("{:?}", path.to_str());
 
         let mut texture_settings = TextureSettings::new();
         texture_settings.set_mag(Filter::Nearest);
