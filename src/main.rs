@@ -3,7 +3,8 @@ use find_folder::Search;
 use fps_counter::FPSCounter;
 use graphics::Transformed;
 use libs::bricks::{Brick, BrickType};
-use libs::collider::Side;
+use libs::collider::{Collision, Side};
+use libs::enemies::Enemy;
 use libs::textures::TextureManager;
 use libs::tilemap::TileMap;
 use piston_window::{
@@ -23,11 +24,12 @@ mod libs {
     pub mod collider;
     pub mod controller;
     pub mod core;
+    pub mod enemies;
     pub mod object;
     pub mod physics;
     pub mod player;
-    pub mod sprites_manager;
-    pub mod spritesheet;
+    pub mod sprite_sheet;
+    pub mod sprite_sheet_manager;
     pub mod textures;
     pub mod tilemap;
     pub mod transform;
@@ -37,8 +39,8 @@ use libs::camera::Camera;
 use libs::core::{Destroyable, Drawable, Entity, Object2D, Updatable};
 use libs::object::Object;
 use libs::player::Player;
-use libs::spritesheet::{SpriteSheet, SpriteSheetConfig};
-use libs::transform::{Rect, Trans};
+use libs::sprite_sheet::{SpriteSheet, SpriteSheetConfig};
+use libs::transform::{self, Rect, Trans};
 #[derive(Copy, Clone, Hash, PartialEq, Eq)]
 enum Music {
     World1_1,
@@ -58,6 +60,7 @@ pub struct Game {
     player: Player,
     player2: Player,
     objects: Vec<Brick>,
+    enemies: Vec<Enemy>,
     player_index: usize,
 }
 impl Game {
@@ -74,6 +77,24 @@ impl Game {
         let mario_texture = texture_manager.load_texture("mario", "Mario.png")?;
         let player2_texture = texture_manager.load_texture("player", "player.png")?;
         let tileset_texture = texture_manager.load_texture("tileset", "tileset1.png")?;
+        let enemies_texture = texture_manager.load_texture("tileset", "enemies.png")?;
+
+        let mut enemies_spritesheet = SpriteSheet::new(
+            enemies_texture,
+            SpriteSheetConfig {
+                grid: [8, 50],
+                sprite_size: Size::from([16.0, 16.0]),
+                spacing: Vector2::from([0.0, 0.0]),
+                offset: Vector2::from([0.0, 0.0]),
+                scale: Vector2::from([1.0, 1.0]),
+            },
+        );
+
+        let mut goomba = Enemy::new("Goomba", Vector2::from([10.0, 10.0]));
+        goomba.set_sprite_sheet(enemies_spritesheet);
+        goomba.add_animation("walk", vec![[1, 0], [1, 1]]);
+        goomba.play_animation("walk");
+        let enemies = vec![goomba];
 
         let mut tilemap = TileMap::new();
 
@@ -102,6 +123,7 @@ impl Game {
             player,
             player2,
             objects,
+            enemies,
             player_index: 0,
         };
 
@@ -109,9 +131,9 @@ impl Game {
     }
 
     fn load_player(texture: Rc<G2dTexture>, config: SpriteSheetConfig) -> Player {
-        let player_sprite_sheet = SpriteSheet::new(texture);
+        let player_sprite_sheet = SpriteSheet::new(texture, config);
         let mut player = Player::new();
-        player.set_sprite_sheet(player_sprite_sheet, config);
+        player.set_sprite_sheet(player_sprite_sheet);
 
         player
     }
@@ -163,15 +185,16 @@ impl Game {
     }
 
     fn load_objects(texture: Rc<G2dTexture>) -> Vec<Brick> {
-        let mut tileset = SpriteSheet::new(texture.clone());
-        let tileset_config = SpriteSheetConfig {
-            offset: Vector2::from([0.0, 0.0]),
-            spacing: Vector2::from([0.0, 0.0]),
-            grid: [1, 2],
-            sprite_size: Size::from([16.0, 16.0]),
-            scale: Vector2::new(1.0, 1.0),
-        };
-        tileset.set_config(&tileset_config);
+        let mut tileset = SpriteSheet::new(
+            texture.clone(),
+            SpriteSheetConfig {
+                offset: Vector2::from([0.0, 0.0]),
+                spacing: Vector2::from([0.0, 0.0]),
+                grid: [1, 2],
+                sprite_size: Size::from([16.0, 16.0]),
+                scale: Vector2::new(1.0, 1.0),
+            },
+        );
         tileset.set_current_tiles(0, 0);
         let brick_sprite = Rc::new(RefCell::new(tileset.clone_sprite()));
         tileset.set_current_tiles(0, 1);
@@ -247,6 +270,7 @@ impl Game {
         let player = &mut self.player;
         let player2 = &mut self.player2;
         let objects = &mut self.objects;
+        let enemies = &mut self.enemies;
 
         let tilemap = &mut self.tilemap;
 
@@ -280,6 +304,10 @@ impl Game {
                 {
                     object.draw(transform, g);
                 }
+            }
+
+            for enemy in enemies.iter_mut() {
+                enemy.draw(transform, g);
             }
 
             player.draw(transform, g);
@@ -325,6 +353,16 @@ impl Game {
                     _ => {}
                 };
             }
+
+            for enemy in self.enemies.iter_mut() {
+                enemy.collide_with(&transform);
+            }
+        }
+
+        for enemy in self.enemies.iter_mut() {
+            let transform = *enemy.get_transform();
+            enemy.update(dt);
+            self.player.collide_with(&transform);
         }
 
         if self.player_index == 0 {

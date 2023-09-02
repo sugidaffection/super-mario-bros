@@ -1,4 +1,10 @@
 use cgmath::Vector2;
+
+use super::{
+    collider::{Collider, Collision, Side},
+    transform::{Rect, Trans, Transform},
+};
+
 #[derive(Debug)]
 pub struct Physics {
     pub velocity: Vector2<f64>,
@@ -15,10 +21,11 @@ pub struct Physics {
     pub mass: f64,
     pub deceleration: f64,
     pub skid_factor: f64,
+    pub transform: Transform,
 }
 
 impl Physics {
-    pub fn new() -> Self {
+    pub fn new(transform: Transform) -> Self {
         Self {
             velocity: Vector2::new(0.0, 0.0),
             max_velocity: Vector2::new(100.0, 400.0),
@@ -34,6 +41,7 @@ impl Physics {
             mass: 450.0,
             deceleration: 120.0,
             skid_factor: 1.08,
+            transform,
         }
     }
 
@@ -121,5 +129,39 @@ impl Physics {
         self.apply_gravity(dt);
         self.apply_horizontal_movement(dt);
         self.apply_jump(dt);
+    }
+}
+
+impl Collision for Physics {
+    fn collide_with(&mut self, transform: &Transform) -> Option<Side> {
+        let side = Collider::aabb(&self.transform, &transform);
+
+        match side {
+            Some(Side::RIGHT) => {
+                let overlap = transform.x() - self.transform.xw();
+                self.transform.translate(overlap, 0.0);
+                self.velocity.x = 0.0;
+            }
+            Some(Side::LEFT) => {
+                let overlap = self.transform.x() - transform.xw();
+                self.transform.translate(-overlap, 0.0);
+                self.velocity.x = 0.0;
+            }
+            Some(Side::TOP) => {
+                let overlap = self.transform.y() - transform.yh();
+                self.transform.translate(0.0, -overlap);
+                self.velocity.y = 0.0;
+                self.can_jump = false;
+            }
+            Some(Side::BOTTOM) => {
+                let overlap = self.transform.yh() - transform.y();
+                self.transform.translate(0.0, -overlap);
+                self.velocity.y = 0.0;
+                self.on_ground = true;
+            }
+            None => {}
+        }
+
+        return side;
     }
 }

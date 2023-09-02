@@ -1,64 +1,82 @@
 pub struct SpriteSheetAnimation {
-    pub name: &'static str,
     animations: Vec<[usize; 2]>,
-    animation_lt: f64,
-    animation_interval: f64,
-    animation_idx: usize,
+    speed: f64,
     state: AnimationState,
+    repeat: AnimationRepeat,
+    current_index: usize,
+    animation_lt: f64,
 }
 
-#[derive(Debug)]
+pub enum AnimationRepeat {
+    FOREVER,
+    ONCE,
+}
+
+#[derive(Debug, PartialEq)]
 enum AnimationState {
     IDLE,
     RUNNING,
 }
 
 impl SpriteSheetAnimation {
-    pub fn new(name: &'static str, animations: Vec<[usize; 2]>) -> Self {
+    pub fn new(animations: Vec<[usize; 2]>, repeat: AnimationRepeat) -> Self {
         Self {
-            name: name,
             animations: animations,
-            animation_lt: 0.0,
-            animation_interval: 0.0,
-            animation_idx: 0,
+            speed: 0.2,
             state: AnimationState::IDLE,
+            repeat,
+            current_index: 0,
+            animation_lt: 0.0,
         }
     }
 
-    pub fn set_animation_interval(&mut self, t: f64) {
-        self.animation_interval = t;
-    }
-
-    pub fn get_animation(&self) -> Option<&[usize; 2]> {
-        self.animations.get(self.animation_idx)
+    pub fn set_animation_speed(&mut self, speed: f64) {
+        self.speed = speed;
     }
 
     pub fn play(&mut self) {
-        self.state = AnimationState::RUNNING;
+        if self.state == AnimationState::IDLE {
+            self.current_index = 0;
+            self.animation_lt = 0.0;
+            self.state = AnimationState::RUNNING;
+            println!("{:?}", self.state);
+        }
     }
 
     pub fn stop(&mut self) {
-        self.state = AnimationState::IDLE;
-        self.animation_idx = 0;
+        if self.state == AnimationState::RUNNING {
+            self.state = AnimationState::IDLE;
+        }
     }
 
     pub fn update(&mut self, dt: f64) {
-        match self.state {
-            AnimationState::RUNNING => {
-                let t: f64 = if self.animation_interval > 0.0 {
-                    self.animation_interval
-                } else {
-                    1.0 / self.animations.len() as f64
-                };
-
-                self.animation_lt += dt;
-
-                if self.animation_lt >= t {
-                    self.animation_idx = (self.animation_idx + 1) % self.animations.len();
-                    self.animation_lt -= t;
+        if self.is_playing() {
+            let duration = self.animations.len() as f64;
+            match self.repeat {
+                AnimationRepeat::FOREVER => {
+                    if self.animation_lt >= duration {
+                        self.animation_lt = 0.0;
+                    }
+                }
+                AnimationRepeat::ONCE => {
+                    if self.current_index >= self.animations.len() {
+                        self.stop();
+                    }
                 }
             }
-            AnimationState::IDLE => {}
+            if self.animation_lt < duration {
+                self.animation_lt += if self.speed > 0.0 { self.speed } else { dt }
+            }
+            self.current_index =
+                ((self.animation_lt).ceil() % self.animations.len() as f64) as usize;
         }
+    }
+
+    pub fn is_playing(&mut self) -> bool {
+        self.state == AnimationState::RUNNING
+    }
+
+    pub fn get_current_animation(&self) -> Option<&[usize; 2]> {
+        self.animations.get(self.current_index)
     }
 }

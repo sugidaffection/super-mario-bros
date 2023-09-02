@@ -8,17 +8,17 @@ pub enum Side {
     BOTTOM,
 }
 
-pub struct Collision {}
-impl Collision {
+pub struct Collider {}
+impl Collider {
     pub fn aabb(rect1: &Transform, rect2: &Transform) -> Option<Side> {
-        if !Collision::check_overlap(rect1, rect2) {
+        if !Collider::check_overlap(rect1, rect2) {
             return None;
         }
 
-        let overlap_left = Collision::calculate_overlap(rect2.xw(), rect1.x());
-        let overlap_right = Collision::calculate_overlap(rect1.xw(), rect2.x());
-        let overlap_top = Collision::calculate_overlap(rect2.yh(), rect1.y());
-        let overlap_bottom = Collision::calculate_overlap(rect1.yh(), rect2.y());
+        let overlap_left = Collider::calculate_overlap(rect2.xw(), rect1.x());
+        let overlap_right = Collider::calculate_overlap(rect1.xw(), rect2.x());
+        let overlap_top = Collider::calculate_overlap(rect2.yh(), rect1.y());
+        let overlap_bottom = Collider::calculate_overlap(rect1.yh(), rect2.y());
 
         let min_overlap = f64::min(
             f64::min(overlap_left, overlap_right),
@@ -44,4 +44,8 @@ impl Collision {
     fn calculate_overlap(high: f64, low: f64) -> f64 {
         high - low
     }
+}
+
+pub trait Collision {
+    fn collide_with(&mut self, transform: &Transform) -> Option<Side>;
 }

@@ -1,9 +1,8 @@
 use cgmath::Vector2;
-use graphics::DrawState;
-use piston_window::{rectangle, Rectangle, Size};
+use piston_window::Size;
 
 use super::{
-    core::{Drawable, Entity, Updatable},
+    core::{Entity, Updatable},
     tilemap::TileMap,
     transform::Rect,
 };

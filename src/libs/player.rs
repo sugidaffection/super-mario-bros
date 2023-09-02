@@ -1,20 +1,17 @@
-use std::borrow::BorrowMut;
-
 use graphics::math::Matrix2d;
-use graphics::{Graphics, Transformed};
-use piston_window::{ButtonState, G2d, G2dTexture, Key};
+use graphics::Transformed;
+use piston_window::{ButtonState, G2d, Key};
 
 use crate::Sound;
 
-use super::collider::Side;
+use super::collider::{Collision, Side};
 use super::core::{Drawable, Entity, Object2D, Updatable};
 use super::{
-    collider::Collision,
     controller::Controller,
     physics::Physics,
-    sprites_manager::SpriteManager,
-    spritesheet::{SpriteSheet, SpriteSheetConfig},
-    transform::{Rect, Trans, Transform},
+    sprite_sheet::SpriteSheet,
+    sprite_sheet_manager::SpriteSheetManager,
+    transform::{Trans, Transform},
 };
 
 #[derive(PartialEq)]
@@ -36,10 +33,9 @@ pub enum PlayerState {
 }
 
 pub struct Player {
-    sprites: SpriteManager,
+    sprites: SpriteSheetManager,
     physics: Physics,
     state: PlayerState,
-    transform: Transform,
     direction: PlayerDirection,
     input: Controller,
 }
@@ -49,81 +45,23 @@ impl Player {
         let mut transform = Transform::new();
         transform.set_position(20.0, 20.0);
         Player {
-            sprites: SpriteManager::new(),
-            physics: Physics::new(),
+            sprites: SpriteSheetManager::new(),
+            physics: Physics::new(transform),
             state: PlayerState::Jump,
-            transform,
             direction: PlayerDirection::Right,
             input: Controller::new(),
         }
     }
 
-    pub fn set_sprite_sheet(&mut self, sprite_sheet: SpriteSheet, config: SpriteSheetConfig) {
+    pub fn set_sprite_sheet(&mut self, sprite_sheet: SpriteSheet) {
         self.sprites.set_spritesheet(sprite_sheet);
-        self.sprites.add_config("default", config);
-        self.sprites.set_current_config("default");
     }
 
     pub fn add_animation(&mut self, name: &'static str, animations: Vec<[usize; 2]>) {
         self.sprites.add_animation(name, animations);
     }
 
-    pub fn collide_with(&mut self, transform: &Transform) -> Option<Side> {
-        let side = Collision::aabb(&self.transform, &transform);
-
-        match side {
-            Some(Side::RIGHT) => {
-                let overlap = transform.x() - self.transform.xw();
-                self.transform.translate(overlap, 0.0);
-                self.physics.velocity.x = 0.0;
-                if self.state != PlayerState::Jump
-                    && self.input.right
-                    && self.physics.on_ground
-                    && self.direction == PlayerDirection::Right
-                {
-                    self.state = PlayerState::Push;
-                } else {
-                    self.state = PlayerState::Idle;
-                }
-            }
-            Some(Side::LEFT) => {
-                let overlap = self.transform.x() - transform.xw();
-                self.transform.translate(-overlap, 0.0);
-                self.physics.velocity.x = 0.0;
-                self.state = PlayerState::Push;
-                if self.state != PlayerState::Jump
-                    && self.input.left
-                    && self.physics.on_ground
-                    && self.direction == PlayerDirection::Left
-                {
-                    self.state = PlayerState::Push;
-                } else {
-                    self.state = PlayerState::Idle;
-                }
-            }
-            Some(Side::TOP) => {
-                // Resolve collision and prevent player from going beyond the top side of the screen
-                let overlap = self.transform.y() - transform.yh();
-                self.transform.translate(0.0, -overlap);
-                self.physics.velocity.y = 0.0;
-                self.physics.can_jump = false;
-            }
-            Some(Side::BOTTOM) => {
-                // Resolve collision and prevent player from going beyond the bottom side of the screen
-                let overlap = self.transform.yh() - transform.y();
-                self.transform.translate(0.0, -overlap);
-                self.physics.velocity.y = 0.0;
-                self.physics.on_ground = true;
-            }
-            None => {}
-        }
-
-        return side;
-    }
-
     pub fn update_animation(&mut self, dt: f64) {
-        self.transform
-            .set_flip_x(self.direction == PlayerDirection::Left);
         match self.state {
             PlayerState::Idle => self.sprites.play_animation("idle"),
             PlayerState::Skid => self.sprites.play_animation("skid"),
@@ -151,7 +89,7 @@ impl Player {
             _ => {}
         }
 
-        self.sprites.set_flip_x(self.transform.is_flip_x());
+        self.sprites.set_flip_x(self.physics.transform.is_flip_x());
 
         self.sprites.update(dt);
     }
@@ -229,9 +167,9 @@ impl Player {
     }
 
     pub fn respawn_player_if_overflow(&mut self, max_y: f64) {
-        let position = self.transform.get_position();
+        let position = self.physics.transform.get_position();
         if position.y > max_y {
-            self.transform.set_position_y(20.0);
+            self.physics.transform.set_position_y(20.0);
             self.physics.velocity.y = 0.0;
             self.physics.on_ground = false;
         }
@@ -245,8 +183,8 @@ impl Player {
 impl Drawable for Player {
     fn draw(&mut self, t: Matrix2d, b: &mut G2d) {
         let transformed = t.trans(
-            self.transform.get_position().x,
-            self.transform.get_position().y,
+            self.physics.transform.get_position().x,
+            self.physics.transform.get_position().y,
         );
 
         self.sprites.draw(transformed, b);
@@ -262,6 +200,10 @@ impl Updatable for Player {
         if self.input.right {
             self.move_right();
         }
+
+        self.physics
+            .transform
+            .set_flip_x(self.direction == PlayerDirection::Left);
 
         if self.input.run
             && ![PlayerState::Push, PlayerState::Skid].contains(&self.state)
@@ -286,19 +228,56 @@ impl Updatable for Player {
         self.physics.update(dt);
         self.update_state();
         self.update_animation(dt);
-        self.transform
+        self.physics
+            .transform
             .translate(self.physics.velocity.x * dt, self.physics.velocity.y * dt);
     }
 }
 
 impl Object2D for Player {
     fn get_transform(&self) -> &Transform {
-        &self.transform
+        &self.physics.transform
     }
 
     fn get_transform_mut(&mut self) -> &mut Transform {
-        self.transform.borrow_mut()
+        &mut self.physics.transform
     }
 }
 
 impl Entity for Player {}
+
+impl Collision for Player {
+    fn collide_with(&mut self, transform: &Transform) -> Option<Side> {
+        let side = self.physics.collide_with(transform);
+
+        match side {
+            Some(Side::RIGHT) => {
+                if self.state != PlayerState::Jump
+                    && self.input.right
+                    && self.physics.on_ground
+                    && self.direction == PlayerDirection::Right
+                {
+                    self.state = PlayerState::Push;
+                } else {
+                    self.state = PlayerState::Idle;
+                }
+            }
+            Some(Side::LEFT) => {
+                self.state = PlayerState::Push;
+                if self.state != PlayerState::Jump
+                    && self.input.left
+                    && self.physics.on_ground
+                    && self.direction == PlayerDirection::Left
+                {
+                    self.state = PlayerState::Push;
+                } else {
+                    self.state = PlayerState::Idle;
+                }
+            }
+            Some(_) => {}
+            None => {}
+        }
+
+        return side;
+    }
+}
