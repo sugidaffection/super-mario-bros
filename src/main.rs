@@ -40,20 +40,12 @@ fn main() {
     let window_size: Size = Size::from([width * scale, height * scale]);
     let viewport_size: Size = Size::from([width, height]);
 
-    music::start::<Music, Sound, _>(16, || {
-        music::bind_music_file(Music::World1_1, "./assets/sounds/main_theme.mp3");
-        music::bind_sound_file(Sound::Jump, "./assets/sounds/jump.mp3");
-        music::bind_sound_file(Sound::Brick, "./assets/sounds/brick.wav");
-        music::bind_sound_file(Sound::Coin, "./assets/sounds/coin.wav");
-        music::set_volume(music::MAX_VOLUME);
-        music::play_music(&Music::World1_1, music::Repeat::Forever);
-        match Game::new(window_size, viewport_size) {
-            Ok(mut game) => {
-                game.start();
-            }
-            Err(error) => {
-                eprintln!("Error! {:?}", error);
-            }
+    match Game::new(window_size, viewport_size) {
+        Ok(mut game) => {
+            game.start();
         }
-    });
+        Err(error) => {
+            eprintln!("Error! {:?}", error);
+        }
+    }
 }

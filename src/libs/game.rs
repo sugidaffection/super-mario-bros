@@ -1,9 +1,7 @@
-use super::bricks::{Brick, BrickType};
+use crate::{Music, Sound};
+
 use super::camera::Camera;
-use super::collider::{Collision, Side};
 use super::core::{Drawable, Object2D, Updatable};
-use super::enemies::Enemy;
-use super::object::Object;
 use super::player::Player;
 use super::progress_bar::ProgressBar;
 use super::sprite_sheet::{SpriteSheet, SpriteSheetConfig};
@@ -11,16 +9,13 @@ use super::stages::{Stage, StageManager};
 use super::textures::TextureManager;
 use super::transform::Trans;
 use cgmath::Vector2;
-use find_folder::Search;
 use fps_counter::FPSCounter;
 use graphics::{text, Transformed};
 use piston_window::{
-    clear, Button, ButtonArgs, ButtonEvent, ButtonState, EventLoop, G2dTexture, G2dTextureContext,
-    GenericEvent, Glyphs, Key, PistonWindow, RenderEvent, Size, UpdateEvent, WindowSettings,
+    clear, Button, ButtonArgs, ButtonEvent, ButtonState, EventLoop, G2dTexture, GenericEvent,
+    Glyphs, Key, PistonWindow, RenderEvent, Size, UpdateEvent, WindowSettings,
 };
-use serde_json::{from_reader, Value};
 use std::cell::RefCell;
-use std::fs::File;
 use std::rc::Rc;
 
 #[derive(PartialEq, Debug)]
@@ -42,8 +37,6 @@ pub struct Game {
     glyphs: Glyphs,
     timer: FPSCounter,
     fps: usize,
-    loader: ProgressBar,
-    loading_progress_value: f64,
 }
 impl Game {
     pub fn new(size: Size, viewport_size: Size) -> Result<Self, String> {
@@ -66,14 +59,6 @@ impl Game {
         let stage_manager = StageManager::new(texture_manager.clone());
         let camera = Camera::new(size, viewport_size);
 
-        let mut progress_bar = ProgressBar::new([1.0, 0.0, 0.0, 1.0], [1.0, 0.0, 0.0, 1.0]);
-        let progress_bar_size = size.width * 0.8;
-        progress_bar.set_pos([
-            (size.width - progress_bar_size) / 2.0,
-            size.height / 2.0 - 8.0,
-        ]);
-        progress_bar.set_size([progress_bar_size, 16.0]);
-
         let mut game = Self {
             window,
             size,
@@ -85,8 +70,6 @@ impl Game {
             glyphs,
             timer: FPSCounter::default(),
             fps: 0,
-            loader: progress_bar,
-            loading_progress_value: 0.0,
             players: Vec::new(),
         };
 
@@ -96,19 +79,56 @@ impl Game {
     }
 
     pub fn start(&mut self) {
-        while let Some(e) = self.window.next() {
-            if let Some(_) = e.render_args() {
-                self.render(&e);
-            }
+        let size = self.size;
+        let mut progress_bar = ProgressBar::new([1.0, 0.0, 0.0, 1.0], [1.0, 0.0, 0.0, 1.0]);
+        let progress_bar_size = size.width * 0.8;
+        progress_bar.set_pos([
+            (size.width - progress_bar_size) / 2.0,
+            size.height / 2.0 - 8.0,
+        ]);
+        progress_bar.set_size([progress_bar_size, 16.0]);
+        let mut loading_progress_value = 0.0;
 
-            if let Some(u) = e.update_args() {
-                self.update(u.dt);
-            }
+        music::start::<Music, Sound, _>(16, || {
+            music::bind_music_file(Music::World1_1, "./assets/sounds/main_theme.mp3");
+            music::bind_sound_file(Sound::Jump, "./assets/sounds/jump.mp3");
+            music::bind_sound_file(Sound::Brick, "./assets/sounds/brick.wav");
+            music::bind_sound_file(Sound::Coin, "./assets/sounds/coin.wav");
+            music::set_volume(music::MAX_VOLUME);
+            while let Some(e) = self.window.next() {
+                if self.state == GameState::Loading {
+                    self.window.draw_2d(&e, |c, g, _d| {
+                        clear([0.0, 0.0, 0.0, 0.5], g);
+                        progress_bar.draw(c.transform, g);
+                    });
 
-            if let Some(args) = e.button_args() {
-                self.update_input(args);
+                    if loading_progress_value <= 1.0 {
+                        if let Some(u) = e.update_args() {
+                            loading_progress_value += u.dt;
+                        }
+                    } else if self.state == GameState::Loading {
+                        self.state = GameState::Run;
+                        music::play_music(&Music::World1_1, music::Repeat::Forever);
+                    }
+                    progress_bar.set_value(loading_progress_value);
+                } else {
+                    if let Some(_) = e.render_args() {
+                        self.render(&e);
+                    }
+
+                    if self.state == GameState::Run {
+                        if let Some(u) = e.update_args() {
+                            self.fps = self.timer.tick();
+                            self.update(u.dt);
+                        }
+
+                        if let Some(args) = e.button_args() {
+                            self.update_input(args);
+                        }
+                    }
+                }
             }
-        }
+        });
     }
 
     pub fn init(&mut self) -> Result<(), String> {
@@ -144,13 +164,12 @@ impl Game {
         stage.load_objects_from_file("world_1_1.tmj")?;
         self.stage_manager.register_stage("level 1", stage);
         self.stage_manager.set_current_stage("level 1");
-        self.stage_manager.load_objects()?;
-        self.stage_manager.load_enemies()?;
+        self.stage_manager.load_stage()?;
 
         Ok(())
     }
 
-    fn load_player(texture: Rc<G2dTexture>, config: SpriteSheetConfig) -> Player {
+    fn create_player(texture: Rc<G2dTexture>, config: SpriteSheetConfig) -> Player {
         let player_sprite_sheet = SpriteSheet::new(texture, config);
         let mut player = Player::new();
         player.set_sprite_sheet(player_sprite_sheet);
@@ -158,56 +177,16 @@ impl Game {
         player
     }
 
-    fn load_player_one(&mut self) -> Result<(), String> {
-        let player_config = Self::load_player_mario_sonic_style_sprite_sheet_config();
-        let mario_texture = self.texture_manager.borrow().get_texture("mario")?;
-        let mut player = Self::load_player(mario_texture, player_config);
-        Self::load_mario_sonic_animation(&mut player);
-
-        self.players.push(player);
-
-        Ok(())
-    }
-
-    fn load_player_two(&mut self) -> Result<(), String> {
-        let player_config = Self::load_mario_default_sprite_sheet_config();
-        let player_texture = self.texture_manager.borrow().get_texture("player")?;
-        let mut player = Self::load_player(Rc::clone(&player_texture), player_config);
-        Self::load_luigi_animation(&mut player);
-
-        self.players.push(player);
-
-        Ok(())
-    }
-
-    fn load_players(&mut self) -> Result<(), String> {
-        self.load_player_one()?;
-        self.load_player_two()?;
-
-        Ok(())
-    }
-
-    fn load_mario_default_sprite_sheet_config() -> SpriteSheetConfig {
-        SpriteSheetConfig {
-            offset: Vector2::new(80.0, 34.0),
-            spacing: Vector2::new(1.0, 47.0),
-            grid: [21, 11],
-            sprite_size: Size::from([16.0, 16.0]),
-            scale: Vector2::new(1.0, 1.0),
-        }
-    }
-
-    fn load_player_mario_sonic_style_sprite_sheet_config() -> SpriteSheetConfig {
-        SpriteSheetConfig {
+    fn create_player_one(&mut self) -> Result<(), String> {
+        let player_config = SpriteSheetConfig {
             offset: Vector2::from([0.0, 0.0]),
             spacing: Vector2::from([0.0, 0.0]),
             grid: [10, 6],
             sprite_size: Size::from([42.0, 42.0]),
             scale: Vector2::new(16.0 / 42.0, 16.0 / 42.0),
-        }
-    }
-
-    fn load_mario_sonic_animation(player: &mut Player) {
+        };
+        let mario_texture = self.texture_manager.borrow().get_texture("mario")?;
+        let mut player = Self::create_player(mario_texture, player_config);
         player.add_animation("idle", vec![[0, 0]]);
         player.add_animation("jump", vec![[4, 0]]);
         player.add_animation("jump-right", vec![[4, 0]]);
@@ -216,45 +195,42 @@ impl Game {
         player.add_animation("walk", vec![[5, 0], [5, 1], [5, 2], [5, 3], [5, 4], [5, 5]]);
         player.add_animation("run", vec![[6, 0], [6, 1], [6, 2]]);
         player.add_animation("push", vec![[8, 0], [8, 1], [8, 2], [8, 3]]);
+
+        self.players.push(player);
+
+        Ok(())
     }
 
-    fn load_mario_animation(player: &mut Player) {
+    fn create_player_two(&mut self) -> Result<(), String> {
+        let player_config = SpriteSheetConfig {
+            offset: Vector2::new(80.0, 34.0),
+            spacing: Vector2::new(1.0, 47.0),
+            grid: [21, 11],
+            sprite_size: Size::from([16.0, 16.0]),
+            scale: Vector2::new(1.0, 1.0),
+        };
+        let player_texture = self.texture_manager.borrow().get_texture("player")?;
+        let mut player = Self::create_player(Rc::clone(&player_texture), player_config);
         player.add_animation("idle", vec![[0, 0]]);
         player.add_animation("jump", vec![[0, 5]]);
         player.add_animation("jump-right", vec![[0, 9]]);
         player.add_animation("fall", vec![[0, 8]]);
         player.add_animation("walk", vec![[0, 1], [0, 2], [0, 3]]);
         player.add_animation("skid", vec![[0, 4]]);
-    }
 
-    fn load_luigi_animation(player: &mut Player) {
-        player.add_animation("idle", vec![[1, 0]]);
-        player.add_animation("jump", vec![[1, 5]]);
-        player.add_animation("walk", vec![[1, 1], [1, 2], [1, 3]]);
-    }
+        self.players.push(player);
 
-    fn load_objects(&mut self) -> Result<(), String> {
-        self.stage_manager.load_objects()?;
         Ok(())
     }
 
-    pub fn render<E>(&mut self, e: &E)
-    where
-        E: GenericEvent,
-    {
-        let loader = &mut self.loader;
+    fn load_players(&mut self) -> Result<(), String> {
+        self.create_player_one()?;
+        self.create_player_two()?;
 
-        if self.state == GameState::Loading {
-            self.window.draw_2d(e, |c, g, _d| {
-                clear([0.0, 0.0, 0.0, 0.5], g);
-                loader.draw(c.transform, g);
-            });
-        } else {
-            self.render_game(e);
-        }
+        Ok(())
     }
 
-    fn render_game<E>(&mut self, e: &E)
+    fn render<E>(&mut self, e: &E)
     where
         E: GenericEvent,
     {
@@ -333,33 +309,24 @@ impl Game {
     }
 
     pub fn update(&mut self, dt: f64) {
-        if self.loading_progress_value <= 1.0 {
-            self.loading_progress_value += dt;
-        } else if self.state == GameState::Loading {
-            self.state = GameState::Run;
+        self.stage_manager.update(dt);
+
+        for player in self.players.iter_mut() {
+            player.update(dt);
+            player.respawn_player_if_overflow(self.camera.viewport_size.height + 100.0);
+
+            self.stage_manager.collide_with(player);
         }
-        self.loader.set_value(self.loading_progress_value);
-        self.fps = self.timer.tick();
-        if self.state == GameState::Run {
-            self.stage_manager.update(dt);
 
-            for player in self.players.iter_mut() {
-                player.update(dt);
-                player.respawn_player_if_overflow(self.camera.viewport_size.height + 100.0);
-
-                self.stage_manager.collide_with(player);
-            }
-
-            if let Some(player) = self.players.get(self.current_player) {
-                self.camera.follow_player(player);
-            }
-
-            if let Some(stage) = self.stage_manager.get_current_stage() {
-                self.camera.update_camera_view(&mut stage.map);
-            }
-
-            self.camera.update(dt);
+        if let Some(player) = self.players.get(self.current_player) {
+            self.camera.follow_player(player);
         }
+
+        if let Some(stage) = self.stage_manager.get_current_stage() {
+            self.camera.update_camera_view(&mut stage.map);
+        }
+
+        self.camera.update(dt);
     }
 
     pub fn update_input(&mut self, args: ButtonArgs) {

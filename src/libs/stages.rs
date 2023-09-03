@@ -9,7 +9,6 @@ use sprite::Sprite;
 
 use super::{
     bricks::{Brick, BrickType},
-    camera::Camera,
     collider::Collision,
     core::{Drawable, Object2D, Updatable},
     enemies::Enemy,
@@ -172,7 +171,7 @@ impl StageManager {
         }
     }
 
-    pub fn load_enemies(&mut self) -> Result<(), String> {
+    fn load_enemies(&mut self) -> Result<(), String> {
         let enemies_texture = self.texture_manager.borrow_mut().get_texture("enemies")?;
         let enemies_spritesheet = SpriteSheet::new(
             enemies_texture,
@@ -194,7 +193,7 @@ impl StageManager {
         Ok(())
     }
 
-    pub fn load_objects(&mut self) -> Result<(), String> {
+    fn load_objects(&mut self) -> Result<(), String> {
         let texture = self.texture_manager.borrow().get_texture("tileset")?;
         let mut tileset = SpriteSheet::new(
             texture,
@@ -242,6 +241,12 @@ impl StageManager {
         self.bricks.extend(bricks);
         self.objects.extend(objects);
 
+        Ok(())
+    }
+
+    pub fn load_stage(&mut self) -> Result<(), String> {
+        self.load_enemies()?;
+        self.load_objects()?;
         Ok(())
     }
 }
