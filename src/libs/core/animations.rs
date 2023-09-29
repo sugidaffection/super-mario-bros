@@ -39,7 +39,6 @@ impl SpriteSheetAnimation {
             self.current_index = 0;
             self.animation_lt = 0.0;
             self.state = AnimationState::RUNNING;
-            println!("{:?}", self.state);
         }
     }
 

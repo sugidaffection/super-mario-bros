@@ -1,13 +1,12 @@
 use crate::{Music, Sound};
 
-use super::camera::Camera;
-use super::core::{Drawable, Object2D, Updatable};
-use super::player::Player;
-use super::progress_bar::ProgressBar;
-use super::sprite_sheet::{SpriteSheet, SpriteSheetConfig};
-use super::stages::{Stage, StageManager};
-use super::textures::TextureManager;
-use super::transform::Trans;
+use super::core::camera::Camera;
+use super::core::sprite_sheet::{SpriteSheet, SpriteSheetConfig};
+use super::core::stages::{Stage, StageManager};
+use super::core::textures::TextureManager;
+use super::entities::player::Player;
+use super::prelude::{Drawable, GameBuilder, Object2D, Trans, Updatable};
+use super::ui::progress_bar::ProgressBar;
 use cgmath::Vector2;
 use fps_counter::FPSCounter;
 use graphics::{text, Transformed};
@@ -20,84 +19,49 @@ use std::rc::Rc;
 
 #[derive(PartialEq, Debug)]
 pub enum GameState {
+    Init,
     Loading,
     Run,
     Pause,
     Stop,
 }
 pub struct Game {
-    window: PistonWindow,
-    size: Size,
-    camera: Camera,
-    texture_manager: Rc<RefCell<TextureManager>>,
-    stage_manager: StageManager,
+    window_settings: WindowSettings,
+    window: Option<PistonWindow>,
+    glyphs: Option<Glyphs>,
+    texture_manager: Option<Rc<RefCell<TextureManager>>>,
+    stage_manager: Option<StageManager>,
     players: Vec<Player>,
     current_player: usize,
     state: GameState,
-    glyphs: Glyphs,
     timer: FPSCounter,
     fps: usize,
+    camera: Camera,
 }
+
 impl Game {
-    pub fn new(size: Size, viewport_size: Size) -> Result<Self, String> {
-        let mut window: PistonWindow = WindowSettings::new("Super Goomba Bros", size)
-            .exit_on_esc(true)
-            .build()
-            .map_err(|e| format!("Failed to build PistonWindow: {:?}", e))?;
-        window.set_ups(60);
-
-        let assets = find_folder::Search::ParentsThenKids(3, 3)
-            .for_folder("assets")
-            .map_err(|err| err.to_string())?;
-
-        let glyphs = window
-            .load_font(assets.join("FiraSans-Regular.ttf"))
-            .map_err(|err| err.to_string())?;
-
-        let context = Rc::new(RefCell::new(window.create_texture_context()));
-        let texture_manager = Rc::new(RefCell::new(TextureManager::new(context.clone())));
-        let stage_manager = StageManager::new(texture_manager.clone());
-        let camera = Camera::new(size, viewport_size);
-
-        let mut game = Self {
-            window,
-            size,
-            camera,
-            texture_manager,
-            stage_manager,
-            current_player: 0,
-            state: GameState::Loading,
-            glyphs,
-            timer: FPSCounter::default(),
-            fps: 0,
-            players: Vec::new(),
-        };
-
-        game.init()?;
-
-        Ok(game)
-    }
-
     pub fn start(&mut self) {
-        let size = self.size;
-        let mut progress_bar = ProgressBar::new([1.0, 0.0, 0.0, 1.0], [1.0, 0.0, 0.0, 1.0]);
-        let progress_bar_size = size.width * 0.8;
-        progress_bar.set_pos([
-            (size.width - progress_bar_size) / 2.0,
-            size.height / 2.0 - 8.0,
-        ]);
-        progress_bar.set_size([progress_bar_size, 16.0]);
-        let mut loading_progress_value = 0.0;
-
         music::start::<Music, Sound, _>(16, || {
             music::bind_music_file(Music::World1_1, "./assets/sounds/main_theme.mp3");
             music::bind_sound_file(Sound::Jump, "./assets/sounds/jump.mp3");
             music::bind_sound_file(Sound::Brick, "./assets/sounds/brick.wav");
             music::bind_sound_file(Sound::Coin, "./assets/sounds/coin.wav");
+
             music::set_volume(music::MAX_VOLUME);
-            while let Some(e) = self.window.next() {
+
+            let size = self.window_settings.get_size();
+            let mut progress_bar = ProgressBar::new([1.0, 0.0, 0.0, 1.0], [1.0, 0.0, 0.0, 1.0]);
+            let progress_bar_size = size.width * 0.8;
+            progress_bar.set_pos([
+                (size.width - progress_bar_size) / 2.0,
+                size.height / 2.0 - 8.0,
+            ]);
+            progress_bar.set_size([progress_bar_size, 16.0]);
+            let mut loading_progress_value = 0.0;
+            self.state = GameState::Loading;
+            while let Some(e) = self.window.as_mut().and_then(|w| w.next()) {
                 if self.state == GameState::Loading {
-                    self.window.draw_2d(&e, |c, g, _d| {
+                    self.window.as_mut().unwrap().draw_2d(&e, |c, g, _d| {
                         clear([0.0, 0.0, 0.0, 0.5], g);
                         progress_bar.draw(c.transform, g);
                     });
@@ -139,32 +103,30 @@ impl Game {
     }
 
     pub fn load_textures(&mut self) -> Result<(), String> {
-        self.texture_manager
-            .borrow_mut()
-            .load_texture("level_1_map", "background/world_1_1.png")?;
-        self.texture_manager
-            .borrow_mut()
-            .load_texture("mario", "spritesheet/Mario.png")?;
-        self.texture_manager
-            .borrow_mut()
-            .load_texture("player", "spritesheet/player.png")?;
-        self.texture_manager
-            .borrow_mut()
-            .load_texture("tileset", "spritesheet/tileset1.png")?;
-        self.texture_manager
-            .borrow_mut()
-            .load_texture("enemies", "spritesheet/enemies.png")?;
+        if let Some(texture_manager) = self.texture_manager.as_mut() {
+            texture_manager
+                .borrow_mut()
+                .load_texture("level_1_map", "background/world_1_1.png")?
+                .load_texture("mario", "spritesheet/Mario.png")?
+                .load_texture("player", "spritesheet/player.png")?
+                .load_texture("tileset", "spritesheet/tileset1.png")?
+                .load_texture("enemies", "spritesheet/enemies.png")?;
+        }
 
         Ok(())
     }
 
     pub fn load_stages(&mut self) -> Result<(), String> {
-        let map_texture = self.texture_manager.borrow().get_texture("level_1_map")?;
-        let mut stage = Stage::new(map_texture);
-        stage.load_objects_from_file("world_1_1.tmj")?;
-        self.stage_manager.register_stage("level 1", stage);
-        self.stage_manager.set_current_stage("level 1");
-        self.stage_manager.load_stage()?;
+        if let Some(texture_manager) = self.texture_manager.as_mut() {
+            let map_texture = texture_manager.borrow().get_texture("level_1_map")?;
+            let mut stage = Stage::new(map_texture);
+            stage.load_objects_from_file("world_1_1.tmj")?;
+            if let Some(stage_manager) = self.stage_manager.as_mut() {
+                stage_manager.register_stage("level 1", stage);
+                stage_manager.set_current_stage("level 1");
+                stage_manager.load_stage()?;
+            }
+        }
 
         Ok(())
     }
@@ -185,7 +147,12 @@ impl Game {
             sprite_size: Size::from([42.0, 42.0]),
             scale: Vector2::new(16.0 / 42.0, 16.0 / 42.0),
         };
-        let mario_texture = self.texture_manager.borrow().get_texture("mario")?;
+        let mario_texture = self
+            .texture_manager
+            .as_ref()
+            .unwrap()
+            .borrow()
+            .get_texture("mario")?;
         let mut player = Self::create_player(mario_texture, player_config);
         player.add_animation("idle", vec![[0, 0]]);
         player.add_animation("jump", vec![[4, 0]]);
@@ -209,7 +176,12 @@ impl Game {
             sprite_size: Size::from([16.0, 16.0]),
             scale: Vector2::new(1.0, 1.0),
         };
-        let player_texture = self.texture_manager.borrow().get_texture("player")?;
+        let player_texture = self
+            .texture_manager
+            .as_ref()
+            .unwrap()
+            .borrow()
+            .get_texture("player")?;
         let mut player = Self::create_player(Rc::clone(&player_texture), player_config);
         player.add_animation("idle", vec![[0, 0]]);
         player.add_animation("jump", vec![[0, 5]]);
@@ -234,7 +206,7 @@ impl Game {
     where
         E: GenericEvent,
     {
-        let window_size = self.size;
+        let window_size = self.window_settings.get_size();
         let camera = &mut self.camera;
         let translate_x = (window_size.width - (camera.viewport_size.width * camera.scale)) / 2.0;
         let translate_y = (window_size.height - (camera.viewport_size.height * camera.scale)) / 2.0;
@@ -246,8 +218,10 @@ impl Game {
         let fps = self.fps;
         let is_pause = self.state == GameState::Pause;
         let text = text::Text::new_color([1.0, 1.0, 1.0, 1.0], 32);
+        let stage_manager = stage_manager.as_mut().unwrap();
+        let window = self.window.as_mut().unwrap();
 
-        self.window.draw_2d(e, |c, g, _d| {
+        window.draw_2d(e, |c, g, _d| {
             clear([0.0, 0.0, 0.0, 0.5], g);
 
             if let Some(stage) = stage_manager.get_current_stage() {
@@ -262,7 +236,7 @@ impl Game {
             let transform = c.transform.trans(0.0, 30.0);
             text.draw(
                 &format!("FPS: {}", fps),
-                glyphs,
+                glyphs.as_mut().unwrap(),
                 &c.draw_state,
                 transform,
                 g,
@@ -275,7 +249,7 @@ impl Game {
                 let player_pos = player.get_transform().get_position();
                 text.draw(
                     &format!("Player 1: {:.1}, {:.1}", player_pos.x, player_pos.y),
-                    glyphs,
+                    glyphs.as_mut().unwrap(),
                     &c.draw_state,
                     transform,
                     g,
@@ -287,11 +261,17 @@ impl Game {
                 let transform = c
                     .transform
                     .trans((window_size.width) / 2.0, (window_size.height - 64.0) / 2.0);
-                text.draw(&format!("PAUSED"), glyphs, &c.draw_state, transform, g)
-                    .unwrap();
+                text.draw(
+                    &format!("PAUSED"),
+                    glyphs.as_mut().unwrap(),
+                    &c.draw_state,
+                    transform,
+                    g,
+                )
+                .unwrap();
             }
 
-            glyphs.factory.encoder.flush(_d);
+            glyphs.as_mut().unwrap().factory.encoder.flush(_d);
 
             let transform = c
                 .trans(
@@ -309,24 +289,24 @@ impl Game {
     }
 
     pub fn update(&mut self, dt: f64) {
-        self.stage_manager.update(dt);
+        if let Some(stage_manager) = self.stage_manager.as_mut() {
+            stage_manager.update(dt);
 
-        for player in self.players.iter_mut() {
-            player.update(dt);
-            player.respawn_player_if_overflow(self.camera.viewport_size.height + 100.0);
+            for player in self.players.iter_mut() {
+                player.update(dt);
+                player.respawn_player_if_overflow(self.camera.viewport_size.height + 100.0);
 
-            self.stage_manager.collide_with(player);
+                stage_manager.collide_with(player);
+            }
+            if let Some(player) = self.players.get(self.current_player) {
+                self.camera.follow_player(player);
+            }
+
+            if let Some(stage) = stage_manager.get_current_stage() {
+                self.camera.update_camera_view(&mut stage.map);
+            }
+            self.camera.update(dt);
         }
-
-        if let Some(player) = self.players.get(self.current_player) {
-            self.camera.follow_player(player);
-        }
-
-        if let Some(stage) = self.stage_manager.get_current_stage() {
-            self.camera.update_camera_view(&mut stage.map);
-        }
-
-        self.camera.update(dt);
     }
 
     pub fn update_input(&mut self, args: ButtonArgs) {
@@ -351,5 +331,62 @@ impl Game {
                 self.current_player %= self.players.len();
             }
         }
+    }
+}
+
+impl GameBuilder for Game {
+    fn new() -> Self {
+        let scale = 3.0;
+        let width = 352.0;
+        let height = 224.0;
+        let window_size: Size = Size::from([width * scale, height * scale]);
+        let viewport_size: Size = Size::from([width, height]);
+
+        let window_settings: WindowSettings = WindowSettings::new("Super Mario Bros", window_size);
+        let camera = Camera::new(window_size, viewport_size);
+
+        Self {
+            window_settings,
+            window: None,
+            glyphs: None,
+            state: GameState::Init,
+            timer: FPSCounter::default(),
+            fps: 0,
+            players: Vec::new(),
+            current_player: 0,
+            texture_manager: None,
+            stage_manager: None,
+            camera,
+        }
+    }
+
+    fn build(mut self) -> Result<(), String> {
+        let mut window: PistonWindow = self
+            .window_settings
+            .build()
+            .map_err(|e| format!("Failed to build PistonWindow: {:?}", e))?;
+        window.set_ups(60);
+
+        let assets = find_folder::Search::ParentsThenKids(3, 3)
+            .for_folder("assets")
+            .map_err(|err| err.to_string())?;
+
+        self.glyphs = window
+            .load_font(assets.join("FiraSans-Regular.ttf"))
+            .map_err(|err| err.to_string())?
+            .into();
+
+        let context = Rc::new(RefCell::new(window.create_texture_context()));
+        self.window = Some(window);
+
+        let texture_manager = Rc::new(RefCell::new(TextureManager::new(context.clone())));
+        let stage_manager = StageManager::new(texture_manager.clone());
+        self.texture_manager = Some(texture_manager);
+        self.stage_manager = Some(stage_manager);
+
+        self.init()?;
+        self.start();
+
+        Ok(())
     }
 }

@@ -2,14 +2,16 @@ use std::borrow::BorrowMut;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::libs::transform::{Rect, Trans, Transform};
 use cgmath::Vector2;
 use graphics::math::Matrix2d;
 use graphics::Transformed;
 use piston_window::{rectangle, DrawState, G2d, G2dTexture, Rectangle, Size};
 use sprite::Sprite;
 
-use super::core::{Drawable, Entity, Object2D, Updatable};
+use crate::libs::{
+    prelude::{Drawable, Entity, Object2D, Rect, Trans, Updatable},
+    utils::transform::Transform,
+};
 
 pub struct Object {
     pub name: String,

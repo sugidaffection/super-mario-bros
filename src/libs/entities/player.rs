@@ -2,16 +2,19 @@ use graphics::math::Matrix2d;
 use graphics::Transformed;
 use piston_window::{ButtonState, G2d, Key};
 
-use crate::Sound;
-
-use super::collider::{Collision, Side};
-use super::core::{Drawable, Entity, Object2D, Updatable};
-use super::{
-    controller::Controller,
-    physics::Physics,
-    sprite_sheet::SpriteSheet,
-    sprite_sheet_manager::SpriteSheetManager,
-    transform::{Trans, Transform},
+use crate::{
+    libs::{
+        core::{
+            collider::{Collision, Side},
+            controller::Controller,
+            physics::Physics,
+            sprite_sheet::SpriteSheet,
+            sprite_sheet_manager::SpriteSheetManager,
+        },
+        prelude::{Drawable, Entity, Object2D, Trans, Updatable},
+        utils::transform::Transform,
+    },
+    Sound,
 };
 
 #[derive(PartialEq)]

@@ -1,9 +1,11 @@
 use cgmath::Vector2;
 
-use super::{
-    collider::{Collider, Collision, Side},
-    transform::{Rect, Trans, Transform},
+use crate::libs::{
+    prelude::{Rect, Trans},
+    utils::transform::Transform,
 };
+
+use super::collider::{Collider, Collision, Side};
 
 #[derive(Debug)]
 pub struct Physics {

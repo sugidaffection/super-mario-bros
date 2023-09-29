@@ -1,14 +1,15 @@
-use std::{borrow::BorrowMut, cell::RefCell, rc::Rc};
+use std::{cell::RefCell, rc::Rc};
 
-use graphics::{types::Matrix2d, Graphics, Transformed};
+use graphics::{types::Matrix2d, Transformed};
 use piston_window::{G2d, G2dTexture};
 use sprite::Sprite;
 
-use crate::Sound;
-
-use super::{
-    core::{Destroyable, Drawable, Entity, Object2D, Updatable},
-    transform::{Rect, Trans, Transform},
+use crate::{
+    libs::{
+        prelude::{Destroyable, Drawable, Object2D, Rect, Updatable},
+        utils::transform::Transform,
+    },
+    Sound,
 };
 
 pub enum BrickType {
@@ -70,10 +71,10 @@ impl Destroyable for Brick {
     }
 
     fn destroy(&mut self) {
+        self.is_destroyed = true;
         match self.brick_type {
             BrickType::Block => {
                 music::play_sound(&Sound::Brick, music::Repeat::Times(0), 1.0);
-                self.is_destroyed = true;
             }
             BrickType::Coin => {
                 music::play_sound(&Sound::Coin, music::Repeat::Times(0), 1.0);

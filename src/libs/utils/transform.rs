@@ -1,39 +1,7 @@
 use cgmath::Vector2;
 use piston_window::Size;
 
-pub trait Rect {
-    fn x(&self) -> f64;
-    fn y(&self) -> f64;
-    fn w(&self) -> f64;
-    fn h(&self) -> f64;
-    fn xw(&self) -> f64;
-    fn yh(&self) -> f64;
-    fn center_xw(&self) -> f64;
-    fn center_yh(&self) -> f64;
-    fn rect_right(&self) -> Vector2<f64>;
-    fn rect_bottom(&self) -> Vector2<f64>;
-    fn rect_center(&self) -> Vector2<f64>;
-    fn rect(&self) -> [f64; 4];
-}
-
-pub trait Trans {
-    fn set_scale(&mut self, x: f64, y: f64);
-    fn get_scale(&self) -> Vector2<f64>;
-    fn set_position(&mut self, x: f64, y: f64);
-    fn set_position_x(&mut self, x: f64);
-    fn set_position_y(&mut self, y: f64);
-    fn get_position(&self) -> Vector2<f64>;
-    fn set_size(&mut self, w: f64, y: f64);
-    fn get_size(&self) -> Size;
-    fn translate(&mut self, x: f64, y: f64);
-    fn translate_x(&mut self, x: f64);
-    fn translate_y(&mut self, y: f64);
-    fn set_flip_x(&mut self, value: bool);
-    fn is_flip_x(&self) -> bool;
-    fn is_flip_y(&self) -> bool;
-    fn set_flip_y(&mut self, value: bool);
-    fn rotate(&mut self, x: f64, y: f64);
-}
+use crate::libs::prelude::{Rect, Trans};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Transform {

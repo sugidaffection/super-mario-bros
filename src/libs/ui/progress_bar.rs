@@ -1,10 +1,8 @@
-use std::ops::Add;
-
 use cgmath::Vector2;
 use graphics::{rectangle, DrawState, Rectangle};
 use piston_window::Size;
 
-use super::{core::Drawable, transform::Transform};
+use crate::libs::prelude::Drawable;
 
 pub struct ProgressBar {
     color: [f32; 4],

@@ -1,13 +1,15 @@
 use cgmath::Vector2;
-use graphics::{rectangle, Transformed};
+use graphics::Transformed;
 
-use super::{
-    collider::{Collision, Side},
-    core::{Drawable, Object2D, Updatable},
-    physics::Physics,
-    sprite_sheet::SpriteSheet,
-    sprite_sheet_manager::SpriteSheetManager,
-    transform::{Rect, Trans, Transform},
+use crate::libs::{
+    core::{
+        collider::{Collision, Side},
+        physics::Physics,
+        sprite_sheet::SpriteSheet,
+        sprite_sheet_manager::SpriteSheetManager,
+    },
+    prelude::{Destroyable, Drawable, Object2D, Trans, Updatable},
+    utils::transform::Transform,
 };
 
 pub struct Enemy {

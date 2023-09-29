@@ -5,7 +5,7 @@ use piston_window::{G2d, G2dTexture, ImageSize, Size};
 use sprite::Sprite;
 use std::rc::Rc;
 
-use super::core::Drawable;
+use crate::libs::prelude::Drawable;
 
 #[derive(Debug)]
 pub struct SpriteSheetConfig {

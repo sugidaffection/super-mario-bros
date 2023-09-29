@@ -20,7 +20,7 @@ impl TextureManager {
         &mut self,
         name: &'static str,
         path_str: &'static str,
-    ) -> Result<Rc<G2dTexture>, String> {
+    ) -> Result<&mut Self, String> {
         let assets = Search::Parents(1)
             .for_folder("assets")
             .map_err(|e| e.to_string())?;
@@ -38,7 +38,7 @@ impl TextureManager {
         let texture_rc = Rc::new(texture);
         self.textures.insert(name, texture_rc.clone());
 
-        Ok(texture_rc)
+        Ok(self)
     }
 
     pub fn get_texture(&self, name: &'static str) -> Result<Rc<G2dTexture>, String> {

@@ -7,16 +7,20 @@ use piston_window::{G2dTexture, Size};
 use serde_json::{from_reader, Value};
 use sprite::Sprite;
 
+use crate::libs::{
+    entities::{
+        bricks::{Brick, BrickType},
+        enemies::Enemy,
+        player::Player,
+    },
+    prelude::{Destroyable, Drawable, Object2D, Trans, Updatable},
+};
+
 use super::{
-    bricks::{Brick, BrickType},
     collider::Collision,
-    core::{Drawable, Object2D, Updatable},
-    enemies::Enemy,
     object::Object,
-    player::Player,
     sprite_sheet::{SpriteSheet, SpriteSheetConfig},
     textures::TextureManager,
-    transform::Trans,
 };
 
 pub struct StageMap {
@@ -163,12 +167,20 @@ impl StageManager {
             }
 
             for brick in self.bricks.iter_mut() {
-                player.collide_with(brick.get_transform());
                 enemy.collide_with(brick.get_transform());
+
+                if let Some(side) = player.collide_with(brick.get_transform()) {
+                    match side {
+                        super::collider::Side::TOP => brick.destroy(),
+                        _ => {}
+                    }
+                }
             }
 
             player.collide_with(enemy.get_transform());
         }
+
+        self.bricks.retain(|brick| !brick.is_destroyed());
     }
 
     fn load_enemies(&mut self) -> Result<(), String> {

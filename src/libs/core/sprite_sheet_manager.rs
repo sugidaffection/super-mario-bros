@@ -1,8 +1,9 @@
 use std::{borrow::BorrowMut, collections::HashMap};
 
+use crate::libs::prelude::{Drawable, Updatable};
+
 use super::{
     animations::{AnimationRepeat, SpriteSheetAnimation},
-    core::{Drawable, Updatable},
     sprite_sheet::SpriteSheet,
 };
 use piston_window::{math::Matrix2d, G2d};

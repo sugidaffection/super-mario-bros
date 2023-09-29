@@ -1,11 +1,9 @@
 use cgmath::Vector2;
 use piston_window::Size;
 
-use super::{
-    core::{Entity, Updatable},
-    stages::StageMap,
-    transform::Rect,
-};
+use crate::libs::prelude::{Entity, Rect, Updatable};
+
+use super::stages::StageMap;
 
 pub struct Camera {
     pub position: Vector2<f64>,
